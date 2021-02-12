@@ -1,4 +1,4 @@
-#include <unistd.h>
+#include "emu.h"
 
 uint8_t readByte(uint16_t addr) {
 	if (addr<0x100 && !isBootROMUnmapped)
@@ -8,19 +8,18 @@ uint8_t readByte(uint16_t addr) {
 	else if (addr<0x8000) // ROM Bank 01~NN
 		return gamerom[addr-0x4000 + 0x4000*selectedROMBank];
 	else if (addr==0xff00) {
-		const uint8_t *state = SDL_GetKeyboardState(NULL);
 		uint8_t ret = mem[0xff00] | 0xf;
 		if ((mem[0xff00]&0x20)==0) {
-			if (state[JOYPAD_START]) ret &= ~8;
-			if (state[JOYPAD_SELECT]) ret &= ~4;
-			if (state[JOYPAD_B]) ret &= ~2;
-			if (state[JOYPAD_A]) ret &= ~1;
+			if (gbmu_keys[GBMU_START]) ret &= ~8;
+			if (gbmu_keys[GBMU_SELECT]) ret &= ~4;
+			if (gbmu_keys[GBMU_B]) ret &= ~2;
+			if (gbmu_keys[GBMU_A]) ret &= ~1;
 		}
 		else if ((mem[0xff00]&0x10)==0) {
-			if (state[JOYPAD_DOWN]) ret &= ~8;
-			if (state[JOYPAD_UP]) ret &= ~4;
-			if (state[JOYPAD_LEFT]) ret &= ~2;
-			if (state[JOYPAD_RIGHT]) ret &= ~1;
+			if (gbmu_keys[GBMU_DOWN]) ret &= ~8;
+			if (gbmu_keys[GBMU_UP]) ret &= ~4;
+			if (gbmu_keys[GBMU_LEFT]) ret &= ~2;
+			if (gbmu_keys[GBMU_RIGHT]) ret &= ~1;
 		}
 		return ret;
 	}

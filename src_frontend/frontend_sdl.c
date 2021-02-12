@@ -1,0 +1,47 @@
+#define SDL_MAIN_HANDLED
+#include <SDL2/SDL.h>
+#include "../src_emu/emu.h"
+
+int main(int ac, char ** av) {
+	if (!gbmu_load_rom(av[1]))
+		exit(printf("fopen error: %s\n", av[1]));
+
+	SDL_Window *window;
+	SDL_Renderer *renderer;
+	SDL_Texture *screenTexture;
+
+	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+		SDL_Log("Unable to initialize SDL: %s", SDL_GetError());
+		return 1;
+	}
+	SDL_CreateWindowAndRenderer(160*2, 144*2, SDL_WINDOW_RESIZABLE, &window, &renderer);
+	SDL_SetWindowTitle(window, "Keys: W,A,S,D,J,K,Return,Backspace");
+	SDL_RenderSetLogicalSize(renderer, 160, 144); // Keep a fixed aspect ratio
+	// SDL_RenderSetIntegerScale(renderer, true); // Force integer scaling
+	screenTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 160, 144);
+
+	while (true) {
+		SDL_Event e;
+		while (SDL_PollEvent(&e)) {
+			if (e.type == SDL_QUIT)
+				exit(0);
+			if (e.type == SDL_KEYDOWN)
+				if (e.key.keysym.scancode == SDL_SCANCODE_ESCAPE)
+					exit(0);
+		}
+		const uint8_t *sdl_keys = SDL_GetKeyboardState(NULL);
+		gbmu_keys[GBMU_SELECT] = sdl_keys[SDL_SCANCODE_BACKSPACE];
+		gbmu_keys[GBMU_START]  = sdl_keys[SDL_SCANCODE_RETURN];
+		gbmu_keys[GBMU_B]      = sdl_keys[SDL_SCANCODE_J];
+		gbmu_keys[GBMU_A]      = sdl_keys[SDL_SCANCODE_K];
+		gbmu_keys[GBMU_UP]     = sdl_keys[SDL_SCANCODE_W];
+		gbmu_keys[GBMU_LEFT]   = sdl_keys[SDL_SCANCODE_A];
+		gbmu_keys[GBMU_DOWN]   = sdl_keys[SDL_SCANCODE_S];
+		gbmu_keys[GBMU_RIGHT]  = sdl_keys[SDL_SCANCODE_D];
+		gbmu_run_one_frame();
+		SDL_UpdateTexture(screenTexture, NULL, screen_pixels, 160*sizeof(uint32_t));
+		SDL_RenderCopy(renderer, screenTexture, NULL, NULL);
+		SDL_RenderPresent(renderer);
+		SDL_Delay(14);
+	}
+}
