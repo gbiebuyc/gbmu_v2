@@ -6,7 +6,7 @@ uint8_t readByte(uint16_t addr) {
 	else if (addr<0x4000) // ROM bank 00
 		return gamerom[addr];
 	else if (addr<0x8000) // ROM Bank 01~NN
-		return gamerom[addr-0x4000 + 0x4000*selectedROMBank];
+		return gamerom[addr-0x4000 + 0x4000*max(1,selectedROMBank)];
 	else if (addr==0xff00) {
 		uint8_t ret = mem[0xff00] | 0xf;
 		if ((mem[0xff00]&0x20)==0) {

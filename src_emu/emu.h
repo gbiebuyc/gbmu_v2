@@ -48,6 +48,7 @@ extern bool debug;
 extern int selectedROMBank;
 extern void (*instrs[512])(void);
 
+void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);
 bool	gbmu_run_one_instr();
 void	gbmu_run_one_frame();

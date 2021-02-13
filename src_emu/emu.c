@@ -60,12 +60,20 @@ bool isHalted = false;
 bool debug = false;
 int selectedROMBank = 1;
 
-bool gbmu_load_rom(char *filepath) {
-	FILE *file;
+void gbmu_reset() {
+	PC = SP = scanlineCycles = divTimerCycles = counterTimerCycles = IME = isBootROMUnmapped = isHalted = selectedROMBank = 0;
+	memset(&regs, 0, sizeof(regs));
 	if (!screen_pixels)
-		screen_pixels = malloc(sizeof(uint32_t) * 160 * 144);
+		screen_pixels = malloc(160 * 144 * 4);
+	for (int i=0; i<160*144; i++)
+		screen_pixels[i] = palette[0];
 	free(mem);
 	mem = calloc(1, 0x10000);
+}
+
+bool gbmu_load_rom(char *filepath) {
+	FILE *file;
+	gbmu_reset();
 	free(gamerom);
 	gamerom = calloc(1, 8388608); // max 8 MB cartridges
 	if (!(file = fopen(filepath, "rb")))
