@@ -6,6 +6,8 @@
 
 GtkWidget *window;
 GtkWidget *image;
+GtkWidget *txtview;
+GtkTextBuffer *txtbuf;
 bool isPlaying;
 bool *keyboard_state;
 
@@ -44,6 +46,28 @@ bool timeout_cb(void *data) {
 		gtk_image_set_from_pixbuf((GtkImage*)image, pixbuf_scaled);
 		g_object_unref(pixbuf);
 		g_object_unref(pixbuf_scaled);
+		char flag_str[4];
+		flag_str[0] = (regs.F & 0x80) ? 'Z' : '-';
+		flag_str[1] = (regs.F & 0x40) ? 'N' : '-';
+		flag_str[2] = (regs.F & 0x20) ? 'H' : '-';
+		flag_str[3] = (regs.F & 0x10) ? 'C' : '-';
+		char buf[1000];
+		char *b = buf;
+		b += sprintf(b, "af= %04X  ", regs.AF);
+		b += sprintf(b, "lcdc=%02X\n", mem[0xff40]);
+		b += sprintf(b, "bc= %04X  ", regs.BC);
+		b += sprintf(b, "stat=%02X\n", mem[0xff41]);
+		b += sprintf(b, "de= %04X  ", regs.DE);
+		b += sprintf(b, "ly=  %02X\n", mem[0xff44]);
+		b += sprintf(b, "hl= %04X  ", regs.HL);
+		b += sprintf(b, "cnt= %02X\n", mem[0xff05]);
+		b += sprintf(b, "sp= %04X  ", SP);
+		b += sprintf(b, "ie=  %02X\n", mem[0xffff]);
+		b += sprintf(b, "pc= %04X  ", PC);
+		b += sprintf(b, "if=  %02X\n", mem[0xff0f]);
+		b += sprintf(b, "ime=%d  ", IME);
+		b += sprintf(b, "flags=%.4s\n", flag_str);
+		gtk_text_buffer_set_text(txtbuf, buf, -1);
 	}
 	return true;
 }
@@ -115,11 +139,10 @@ int main(int ac, char **av) {
 	g_signal_connect(pause_button, "clicked", G_CALLBACK(pause_btn_clicked), NULL);
 	gtk_container_add(GTK_CONTAINER(container), pause_button);
 
-	GtkWidget *txtview = gtk_text_view_new();
+	txtview = gtk_text_view_new();
 	gtk_text_view_set_cursor_visible((GtkTextView*)txtview, FALSE);
-	GtkTextBuffer *txtbuf = gtk_text_view_get_buffer((GtkTextView*)txtview);
-	gtk_text_buffer_set_text(txtbuf, "hello world\nanother line.", -1);
-	gtk_text_buffer_set_text(txtbuf, "hello world\nanother line.", -1);
+	gtk_text_view_set_monospace((GtkTextView*)txtview, TRUE);
+	txtbuf = gtk_text_view_get_buffer((GtkTextView*)txtview);
 	gtk_container_add(GTK_CONTAINER(container), txtview);
 
 	if (av[1]) {
