@@ -6,24 +6,22 @@ uint8_t readByte(uint16_t addr) {
 	else if (addr<0x4000) // ROM bank 00
 		return gamerom[addr];
 	else if (addr<0x8000) // ROM Bank 01~NN
-		return gamerom[addr-0x4000 + 0x4000*max(1,selectedROMBank)];
-	else if (addr==0xff00) {
-		uint8_t ret = mem[0xff00] | 0xf;
-		if ((mem[0xff00]&0x20)==0) {
-			if (gbmu_keys[GBMU_START]) ret &= ~8;
-			if (gbmu_keys[GBMU_SELECT]) ret &= ~4;
-			if (gbmu_keys[GBMU_B]) ret &= ~2;
-			if (gbmu_keys[GBMU_A]) ret &= ~1;
-		}
-		else if ((mem[0xff00]&0x10)==0) {
-			if (gbmu_keys[GBMU_DOWN]) ret &= ~8;
-			if (gbmu_keys[GBMU_UP]) ret &= ~4;
-			if (gbmu_keys[GBMU_LEFT]) ret &= ~2;
-			if (gbmu_keys[GBMU_RIGHT]) ret &= ~1;
-		}
-		return ret;
-	}
-	else if (addr>=0x8000)
+		return gamerom[addr-0x4000 + 0x4000*max(1,ROMBankNumber)];
+	else if (addr<0xA000) // VRAM
+		return mem[addr];
+	else if (addr<0xC000) // External RAM
+		return external_ram[addr-0xA000 + 0x2000*externalRAMBankNumber];
+	else if (addr<0xD000) // Work RAM Bank 0
+		return mem[addr];
+	else if (addr<0xE000 && hardwareMode==MODE_DMG) // Work RAM Bank 1
+		return mem[addr];
+	else if (addr<0xE000 && hardwareMode==MODE_GBC) // Work RAM Bank 1-7 (GBC)
+		return gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70])];
+	else if (addr<0xFE00) // Same as C000-DDFF (ECHO)
+		return readByte(addr-0x2000);
+	else if (addr==0xff00)
+		return readJoypadRegister();
+	else
 		return mem[addr];
 }
 
@@ -32,20 +30,64 @@ uint16_t readWord(uint16_t addr) {
 }
 
 void writeByte(uint16_t addr, uint8_t val) {
-	if (addr==0xff50)
+	if (addr<0x2000)
+		printf("warning: write at %#x - ROM Bank 00 (Read Only)\n", addr);
+	else if (addr<0x4000)  // ROM Bank Number
+		ROMBankNumber = val;
+	else if (addr<0x6000) { // External RAM Bank Number
+		if (val >= 8)
+			printf("warning: write at %#x - rtc register not implemented\n", addr);
+		else
+			externalRAMBankNumber = val;
+	}
+	else if (addr<0x8000)
+		printf("warning: write at %#x - Latch Clock Data not implemented\n", addr);
+	else if (addr<0xA000) // VRAM
+		mem[addr] = val;
+	else if (addr<0xC000) // External RAM
+		external_ram[addr-0xA000 + 0x2000*externalRAMBankNumber] = val;
+	else if (addr<0xD000) // Work RAM Bank 0
+		mem[addr] = val;
+	else if (addr<0xE000 && hardwareMode==MODE_DMG) // Work RAM Bank 1
+		mem[addr] = val;
+	else if (addr<0xE000 && hardwareMode==MODE_GBC) // Work RAM Bank 1-7 (GBC)
+		gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70])] = val;
+	else if (addr<0xFE00) // Same as C000-DDFF (ECHO)
+		writeByte(addr-0x2000, val);
+	if (addr==0xff50) {
 		isBootROMUnmapped = true;
+		if (hardwareMode == MODE_GBC)
+			regs.A = 0x11; // GBC Mode
+	}
 	else if (addr==0xff02 && val==0x81) // Serial Data Transfer (Link Cable)
 		write(STDOUT_FILENO, mem+0xff01, 1);
 	else if (addr==0xff46) // DMA Transfer
 		memcpy(mem+0xfe00, mem+((uint16_t)val<<8), 0xa0);
 	else if (addr==0xff04) // Divider Register
 		mem[0xff04] = 0;
-	else if (addr>=0x2000 && addr<0x4000)
-		selectedROMBank = val & 0x1f;
-	else if (addr>=0x8000)
-		mem[addr] = val;
+	else if (addr==0xff69) { // GBC Background Palette Data
+		int palette_index = mem[0xff68] & 0x3f;
+		bool auto_increment = mem[0xff68] >> 7;
+		gbc_backgr_palettes[palette_index] = val;
+		if (auto_increment) {
+			mem[0xff68]++;
+			mem[0xff68] &= 0x3f;
+		}
+	}
+	else if (addr==0xff6b) { // GBC Sprite Palette Data
+		int palette_index = mem[0xff6a] & 0x3f;
+		bool auto_increment = mem[0xff6a] >> 7;
+		gbc_backgr_palettes[palette_index] = val;
+		if (auto_increment) {
+			mem[0xff6a]++;
+			mem[0xff6a] &= 0x3f;
+		}
+	}
+	else if (addr==0xff55) {
+		printf("warning: gbc dma not implemented\n");
+	}
 	else
-		printf("warning: write at %#x\n", addr);
+		mem[addr] = val;
 }
 
 void writeWord(uint16_t addr, uint16_t val) {

@@ -2,8 +2,9 @@
 
 bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
 uint32_t *screen_pixels;
-uint32_t palette[] = {0xffffffff, 0xffaaaaaa, 0xff555555, 0xff000000};
 uint8_t *mem;
+uint8_t *gbc_wram;
+uint8_t *external_ram;
 uint8_t *gamerom;
 size_t   gamerom_size;
 uint8_t bootrom[] = {
@@ -50,25 +51,28 @@ uint8_t cycleTable[256] = { // Duration in cycles of each cpu instruction.
 };
 uint16_t PC, SP;
 t_regs regs;
-int scanlineCycles;
-int divTimerCycles;
-int counterTimerCycles;
+int scanlineCycles, divTimerCycles, counterTimerCycles, cycles;
 bool IME;
-int cycles;
-bool isBootROMUnmapped = false;
-bool isHalted = false;
-bool debug = false;
-int selectedROMBank = 1;
+bool isBootROMUnmapped;
+bool isHalted;
+bool debug;
+int ROMBankNumber, externalRAMBankNumber;
+t_mode hardwareMode;
+int LY;
 
 void gbmu_reset() {
-	PC = SP = scanlineCycles = divTimerCycles = counterTimerCycles = IME = isBootROMUnmapped = isHalted = selectedROMBank = 0;
+	PC = SP = scanlineCycles = divTimerCycles = counterTimerCycles = IME = isBootROMUnmapped = isHalted = ROMBankNumber = externalRAMBankNumber = 0;
 	memset(&regs, 0, sizeof(regs));
+	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
 	if (!screen_pixels)
 		screen_pixels = malloc(160 * 144 * 4);
-	for (int i=0; i<160*144; i++)
-		screen_pixels[i] = palette[0];
+	lcd_clear();
 	free(mem);
 	mem = calloc(1, 0x10000);
+	free(gbc_wram);
+	gbc_wram = calloc(1, 32*1024);
+	free(external_ram);
+	external_ram = calloc(1, 32*1024);
 }
 
 bool gbmu_load_rom(char *filepath) {
@@ -82,6 +86,10 @@ bool gbmu_load_rom(char *filepath) {
 	while (fread(gamerom + gamerom_size, 1, 0x100, file) == 0x100)
 		gamerom_size += 0x100;
 	fclose(file);
+	if (gamerom[0x143] == MODE_DMG)
+		hardwareMode = MODE_DMG;
+	else
+		hardwareMode = MODE_GBC;
 	return true;
 }
 
@@ -122,7 +130,7 @@ bool gbmu_run_one_instr() {
 		mem[0xff44]++;
 		if (mem[0xff44] > 153)
 			mem[0xff44] = 0;
-		int LY  = mem[0xff44];
+		LY = mem[0xff44];
 		int LYC = mem[0xff45];
 		bool isDisplayEnabled = mem[0xff40] & 0x80;
 		bool coincidenceFlag = LY==LYC;
@@ -133,87 +141,20 @@ bool gbmu_run_one_instr() {
 		if (LY==144) {
 			requestInterrupt(0x01); // V-Blank Interrupt
 			if (SHOW_BOOT_ANIMATION || isBootROMUnmapped) {
-				if (!isDisplayEnabled) { // Clear the display if disabled
-					for (int i=0; i<160*144; i++)
-						screen_pixels[i] = palette[0];
-				}
+				if (!isDisplayEnabled)
+					lcd_clear();
 				isFrameReady = true;
 			}
 		}
 
 		if (LY < 144 && isDisplayEnabled) {
-
-			// Draw BG & Window
-			uint8_t *BGTileMap  = mem + ((mem[0xff40]&0x08) ? 0x9c00 : 0x9800);
-			uint8_t *WinTileMap = mem + ((mem[0xff40]&0x40) ? 0x9c00 : 0x9800);
-			uint8_t *tileData   = mem + ((mem[0xff40]&0x10) ? 0x8000 : 0x8800);
-			bool isWindowDisplayEnabled = mem[0xff40]&0x20;
-			bool isBGDisplayEnabled = mem[0xff40]&0x01;
-			for (int screenX=0; screenX<160; screenX++) {
-				int WY=mem[0xff4a], WX=mem[0xff4b]-7;
-				int SCY=mem[0xff42], SCX=mem[0xff43];
-				uint8_t *tileMap;
-				int x, y;
-				if (isWindowDisplayEnabled && WY<=LY && WX<=screenX) {
-					x = (screenX-WX)&0xff;
-					y = (LY-WY)&0xff;
-					tileMap = WinTileMap;
-				} else if (isBGDisplayEnabled) {
-					x = (screenX+SCX)&0xff;
-					y = (LY+SCY)&0xff;
-					tileMap = BGTileMap;
-				} else {
-					break;
-				}
-				int tileX = x>>3;
-				int tileY = y>>3;
-				int u = x&7;
-				int v = y&7;
-				int tileIndex = tileMap[tileY*32 + tileX];
-				if (!(mem[0xff40]&0x10))
-					tileIndex = (int8_t)tileIndex + 128;
-				uint8_t *tile = tileData + tileIndex*16;
-				uint16_t pixels = ((uint16_t*)tile)[v];
-				uint32_t px = pixels >> (7-u);
-				px = (px>>7&2) | (px&1);
-				px = palette[(mem[0xff47]>>(px*2))&3];
-				screen_pixels[LY*160 + screenX] = px;
-			}
-
-			// Draw Sprites
-			uint8_t *spriteAttrTable = mem+0xfe00;
-			uint8_t *spriteData = mem+0x8000;
-			bool isSpriteDisplayEnabled = mem[0xff40]&0x02;
-			for (int i=0; i<40; i++) {
-				if (!isSpriteDisplayEnabled)
-					break;
-				uint8_t *sprite = spriteAttrTable + i*4;
-				int spriteY = (int)sprite[0] - 16;
-				int v = LY - spriteY;
-				if (v < 0 || v > 7)
-					continue;
-				bool flipX = sprite[3]&0x20;
-				bool flipY = sprite[3]&0x40;
-				int spriteX = (int)sprite[1] - 8;
-				uint8_t *tile = spriteData + sprite[2]*16;
-				uint16_t pixels = ((uint16_t*)tile)[flipY ? (7-v) : v];
-				uint8_t spritePalette = mem[(sprite[3]&10) ? 0xff49 : 0xff48];
-				for (int screenX=max(0, spriteX); screenX<min(160, spriteX+8); screenX++) {
-					int u = screenX - spriteX;
-					uint32_t px = pixels >> (flipX ? u : (7-u));
-					px = (px>>7&2) | (px&1);
-					if (!px) // transparent
-						continue;
-					px = palette[(spritePalette>>(px*2))&3];
-					screen_pixels[LY*160 + screenX] = px;
-				}
-			}
+			lcd_draw_current_row();
 		}
 	}
 
 	// Set LCD mode flag
 	int lcd_mode;
-	if (mem[0xff44] >= 144)
+	if (LY >= 144)
 		lcd_mode = 1;
 	else if (scanlineCycles >= 252)
 		lcd_mode = 0;
@@ -245,10 +186,11 @@ bool gbmu_run_one_instr() {
 	uint8_t IF = mem[0xff0f];
 	if (IME && IE && IF) {
 		for (int i=0; i<5; i++) {
+			int interrupt_vector = 0x40 + 8*i;
 			int mask = 1<<i;
 			if (IE & IF & mask) {
 				push(PC);
-				PC = "@HPX`"[i];
+				PC = interrupt_vector;
 				mem[0xff0f] &= ~mask;
 				IME = 0;
 				break;
@@ -256,18 +198,4 @@ bool gbmu_run_one_instr() {
 		}
 	}
 	return isFrameReady;
-}
-
-int min(int a, int b) {
-	return ((a < b) ? a : b);
-}
-
-int max(int a, int b) {
-	return ((a > b) ? a : b);
-}
-
-void requestInterrupt(uint8_t interrupt) {
-	if (mem[0xffff] & interrupt)
-		mem[0xff0f] |= interrupt;
-	isHalted = false;
 }

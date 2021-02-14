@@ -5,6 +5,11 @@
 #include <stdint.h>
 #include <unistd.h>
 
+void	gbmu_reset();
+bool	gbmu_load_rom(char *filepath);
+bool	gbmu_run_one_instr();
+void	gbmu_run_one_frame();
+
 #define SHOW_BOOT_ANIMATION false
 #define FLAG_Z (regs.F>>7&1)
 #define FLAG_N (regs.F>>6&1)
@@ -23,9 +28,18 @@ enum {
 	GBMU_NUMBER_OF_KEYS,
 };
 
+typedef enum {
+	MODE_DMG = 0,
+	MODE_GBC = 0xC0,
+	MODE_DMG_OR_GBC = 0x80,
+} t_mode;
+
 extern bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
 extern uint32_t *screen_pixels;
-extern uint32_t palette[];
+extern uint8_t *gbc_wram;
+extern uint8_t *external_ram;
+extern uint8_t gbc_backgr_palettes[8*4*2]; // 8 palettes of 4 colors of 2 bytes.
+extern uint8_t gbc_sprite_palettes[8*4*2];
 extern uint8_t *mem;
 extern uint8_t *gamerom;
 extern size_t   gamerom_size;
@@ -37,23 +51,20 @@ typedef union {
 	struct { uint8_t F, A, C, B, E, D, L, H; };
 } t_regs;
 extern t_regs regs;
-extern int scanlineCycles;
-extern int divTimerCycles;
-extern int counterTimerCycles;
+extern int scanlineCycles, divTimerCycles, counterTimerCycles, cycles;
 extern bool IME;
-extern int cycles;
 extern bool isBootROMUnmapped;
 extern bool isHalted;
 extern bool debug;
-extern int selectedROMBank;
+extern int ROMBankNumber, externalRAMBankNumber;
 extern void (*instrs[512])(void);
-
-void	gbmu_reset();
-bool	gbmu_load_rom(char *filepath);
-bool	gbmu_run_one_instr();
-void	gbmu_run_one_frame();
+extern t_mode hardwareMode;
+extern int LY;
 
 // Internal
+uint8_t		readJoypadRegister();
+void		lcd_clear();
+void		lcd_draw_current_row();
 uint8_t		readByte(uint16_t addr);
 uint16_t	readWord(uint16_t addr);
 void		writeByte(uint16_t addr, uint8_t val);
