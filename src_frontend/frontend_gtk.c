@@ -64,6 +64,15 @@ void refresh_ui() {
 	b += sprintf(b, "if=  %02X\n", mem[0xff0f]);
 	b += sprintf(b, "ime=%d  ", IME);
 	b += sprintf(b, "flags=%.4s\n", flag_str);
+	b += sprintf(b,
+		"                          \n"
+		"    _                     \n"
+		"  _|W|_               (K) \n"
+		" |A   D|          (J)     \n"
+		"  ‾|S|‾                   \n"
+		"    ‾  _____   _____      \n"
+		"      |Shift| |Enter|     \n"
+		"       ‾‾‾‾‾   ‾‾‾‾‾      \n");
 	gtk_text_buffer_set_text(txtbuf, buf, -1);
 }
 
@@ -71,7 +80,7 @@ void update_input() {
 	gbmu_keys[GBMU_A] = keyboard_state[GDK_KEY_k];
 	gbmu_keys[GBMU_B] = keyboard_state[GDK_KEY_j];
 	gbmu_keys[GBMU_START] = keyboard_state[GDK_KEY_Return];
-	gbmu_keys[GBMU_SELECT] = keyboard_state[GDK_KEY_BackSpace];
+	gbmu_keys[GBMU_SELECT] = keyboard_state[GDK_KEY_Shift_L] || keyboard_state[GDK_KEY_Shift_R];
 	gbmu_keys[GBMU_UP] = keyboard_state[GDK_KEY_z] || keyboard_state[GDK_KEY_w];
 	gbmu_keys[GBMU_LEFT] = keyboard_state[GDK_KEY_q] || keyboard_state[GDK_KEY_a];
 	gbmu_keys[GBMU_DOWN] = keyboard_state[GDK_KEY_s];
