@@ -13,8 +13,8 @@ void lcd_clear() {
 
 void lcd_draw_current_row() {
 	// Draw BG & Window
-	uint8_t *BGTileMap  = mem + ((LCDC&0x08) ? 0x9c00 : 0x9800);
-	uint8_t *WinTileMap = mem + ((LCDC&0x40) ? 0x9c00 : 0x9800);
+	uint8_t *BGTileMap  = vram + ((LCDC&0x08) ? 0x1c00 : 0x1800);
+	uint8_t *WinTileMap = vram + ((LCDC&0x40) ? 0x1c00 : 0x1800);
 	uint8_t *tileData   = vram + ((LCDC&0x10) ? 0 : 0x800);
 	bool isWindowDisplayEnabled = LCDC&0x20;
 	bool isBGDisplayEnabled = LCDC&0x01;
@@ -38,7 +38,7 @@ void lcd_draw_current_row() {
 		int tileY = y>>3;
 		int u = x&7;
 		int v = y&7;
-		uint8_t attributes = vram[0x3800 + tileY*32 + tileX]; // In Bank 1
+		uint8_t attributes = tileMap[0x2000 + tileY*32 + tileX]; // In Bank 1
 		if (hardwareMode == MODE_GBC && (attributes & 0x8))
 			tileData += 0x2000; // Tile in Bank 1
 		int tileIndex = tileMap[tileY*32 + tileX];
@@ -62,10 +62,10 @@ void lcd_draw_current_row() {
 
 	// Draw Sprites
 	uint8_t *spriteAttrTable = mem+0xfe00;
-	// uint8_t *spriteData = mem+0x8000;
 	bool isSpriteDisplayEnabled = LCDC&0x02;
+	int spritePerLineLimit = 10;
 	for (int i=0; i<40; i++) {
-		if (!isSpriteDisplayEnabled)
+		if (!isSpriteDisplayEnabled || !spritePerLineLimit)
 			break;
 		uint8_t *sprite = spriteAttrTable + i*4;
 		int tile_number = sprite[2];
@@ -91,6 +91,7 @@ void lcd_draw_current_row() {
 			if (v >= 8)
 				continue;
 		}
+		spritePerLineLimit--;
 		int spriteX = (int)sprite[1] - 8;
 		uint8_t *tile = vram + tile_number*16;
 		if (hardwareMode==MODE_GBC && sprite[3]&8)
