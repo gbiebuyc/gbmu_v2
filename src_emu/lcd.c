@@ -68,14 +68,27 @@ void lcd_draw_current_row() {
 		if (!isSpriteDisplayEnabled)
 			break;
 		uint8_t *sprite = spriteAttrTable + i*4;
+		int tile_number = sprite[2];
 		int spriteY = (int)sprite[0] - 16;
 		int v = LY - spriteY;
-		if (v < 0 || v > 7)
+		if (v < 0)
 			continue;
+		if (LCDC & 0b100) { // 8x16
+			if (v < 8)
+				tile_number &= 0xFE; // Upper tile
+			else if (v < 16) {
+				tile_number |= 1; // Lower tile
+				v -= 8;
+			} else
+				continue;
+		} else { // 8x8
+			if (v > 7)
+				continue;
+		}
 		bool flipX = sprite[3]&0x20;
 		bool flipY = sprite[3]&0x40;
 		int spriteX = (int)sprite[1] - 8;
-		uint8_t *tile = vram + sprite[2]*16;
+		uint8_t *tile = vram + tile_number*16;
 		if (hardwareMode==MODE_GBC && sprite[3]&8)
 			tile += 0x2000;
 		uint16_t pixels = ((uint16_t*)tile)[flipY ? (7-v) : v];
