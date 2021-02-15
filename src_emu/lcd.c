@@ -17,12 +17,14 @@ void lcd_draw_current_row() {
 	uint8_t *WinTileMap = vram + ((LCDC&0x40) ? 0x1c00 : 0x1800);
 	uint8_t *tileData   = vram + ((LCDC&0x10) ? 0 : 0x800);
 	bool isWindowDisplayEnabled = LCDC&0x20;
-	bool isBGDisplayEnabled = LCDC&0x01;
+	bool isBGDisplayEnabled = (LCDC&0x01) || hardwareMode==MODE_GBC;
+	bool BGPriority[160];
+	memset(BGPriority, 0, sizeof(BGPriority));
 	for (int screenX=0; screenX<160; screenX++) {
 		int WY=mem[0xff4a], WX=mem[0xff4b]-7;
 		int SCY=mem[0xff42], SCX=mem[0xff43];
 		uint8_t *tileMap;
-		int x, y;
+		int x, y; // Coordinates in the BG/Window
 		if (isWindowDisplayEnabled && WY<=LY && WX<=screenX) {
 			x = (screenX-WX)&0xff;
 			y = (LY-WY)&0xff;
@@ -38,16 +40,19 @@ void lcd_draw_current_row() {
 		int tileY = y>>3;
 		int u = x&7;
 		int v = y&7;
-		uint8_t attributes = tileMap[0x2000 + tileY*32 + tileX]; // In Bank 1
-		if (hardwareMode == MODE_GBC && (attributes & 0x8))
-			tileData += 0x2000; // Tile in Bank 1
+		uint8_t attributes = tileMap[0x2000 + tileY*32 + tileX]; // Map Attributes in Bank 1
+		bool flipX = (hardwareMode==MODE_GBC) && (attributes & 0x20);
+		bool flipY = (hardwareMode==MODE_GBC) && (attributes & 0x40);
 		int tileIndex = tileMap[tileY*32 + tileX];
 		if (!(LCDC&0x10))
 			tileIndex = (int8_t)tileIndex + 128;
 		uint8_t *tile = tileData + tileIndex*16;
-		uint16_t pixels = ((uint16_t*)tile)[v];
-		uint32_t px = pixels >> (7-u);
+		if (hardwareMode == MODE_GBC && (attributes & 0x8))
+			tile += 0x2000; // Tile in Bank 1
+		uint16_t pixels = ((uint16_t*)tile)[flipY ? (7-v) : v];
+		uint32_t px = pixels >> (flipX ? u : (7-u));
 		px = (px>>7&2) | (px&1);
+		BGPriority[screenX] = (attributes & 0x80) && (LCDC&0x01) && (px != 0);
 		if (hardwareMode == MODE_DMG){
 			px = dmg_palette[(mem[0xff47]>>(px*2))&3];
 		} else {
@@ -99,6 +104,8 @@ void lcd_draw_current_row() {
 		uint16_t pixels = ((uint16_t*)tile)[flipY ? (7-v) : v];
 		uint8_t spritePalette = mem[(sprite[3]&10) ? 0xff49 : 0xff48];
 		for (int screenX=max(0, spriteX); screenX<min(160, spriteX+8); screenX++) {
+			if (hardwareMode==MODE_GBC && BGPriority[screenX])
+				continue;
 			int u = screenX - spriteX;
 			uint32_t px = pixels >> (flipX ? u : (7-u));
 			px = (px>>7&2) | (px&1);
