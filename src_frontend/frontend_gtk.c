@@ -18,6 +18,15 @@ GtkWidget *btn_run_instr;
 
 bool key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
+	if (event->keyval == GDK_KEY_F3) {
+		for (int i=0; i<4; i++) {
+			printf("%04X ", ((uint16_t*)gbc_backgr_palettes)[i]);
+		}
+		for (int i=0; i<4; i++) {
+			printf("%04X ", ((uint16_t*)gbc_sprite_palettes)[i]);
+		}
+		printf("\n");
+	}
 	if (event->keyval == GDK_KEY_Escape)
 		gtk_main_quit();
 	if (event->keyval < 0x10000)
@@ -74,6 +83,13 @@ void refresh_ui() {
 		"      |Shift| |Enter|     \n"
 		"       ‾‾‾‾‾   ‾‾‾‾‾      \n");
 	gtk_text_buffer_set_text(txtbuf, buf, -1);
+		// for (int i=0; i<4; i++) {
+		// 	printf("%04X ", ((uint16_t*)gbc_backgr_palettes)[i]);
+		// }
+		// for (int i=0; i<4; i++) {
+		// 	printf("%04X ", ((uint16_t*)gbc_sprite_palettes)[i]);
+		// }
+		// printf("\n");
 }
 
 void update_input() {

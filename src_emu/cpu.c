@@ -8,7 +8,7 @@ uint8_t readByte(uint16_t addr) {
 	else if (addr<0x8000) // ROM Bank 01~NN
 		return gamerom[addr-0x4000 + 0x4000*max(1,ROMBankNumber)];
 	else if (addr<0xA000) // VRAM
-		return mem[addr];
+		return vram[addr-0x8000 + 0x2000*(mem[0xFF4F]&1)];
 	else if (addr<0xC000) // External RAM
 		return external_ram[addr-0xA000 + 0x2000*externalRAMBankNumber];
 	else if (addr<0xD000) // Work RAM Bank 0
@@ -16,11 +16,15 @@ uint8_t readByte(uint16_t addr) {
 	else if (addr<0xE000 && hardwareMode==MODE_DMG) // Work RAM Bank 1
 		return mem[addr];
 	else if (addr<0xE000 && hardwareMode==MODE_GBC) // Work RAM Bank 1-7 (GBC)
-		return gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70])];
+		return gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70]&7)];
 	else if (addr<0xFE00) // Same as C000-DDFF (ECHO)
 		return readByte(addr-0x2000);
 	else if (addr==0xff00)
 		return readJoypadRegister();
+	else if (addr==0xff69) // GBC Background Palette Data
+		return gbc_backgr_palettes[mem[0xff68] & 0x3f];
+	else if (addr==0xff6b) // GBC Background Palette Data
+		return gbc_backgr_palettes[mem[0xff6a] & 0x3f];
 	else
 		return mem[addr];
 }
@@ -30,8 +34,8 @@ uint16_t readWord(uint16_t addr) {
 }
 
 void writeByte(uint16_t addr, uint8_t val) {
-	if (addr<0x2000)
-		printf("warning: write at %#x - ROM Bank 00 (Read Only)\n", addr);
+	if (addr<0x2000) // External RAM enable
+		;
 	else if (addr<0x4000)  // ROM Bank Number
 		ROMBankNumber = val;
 	else if (addr<0x6000) { // External RAM Bank Number
@@ -43,7 +47,7 @@ void writeByte(uint16_t addr, uint8_t val) {
 	else if (addr<0x8000)
 		printf("warning: write at %#x - Latch Clock Data not implemented\n", addr);
 	else if (addr<0xA000) // VRAM
-		mem[addr] = val;
+		vram[addr-0x8000 + 0x2000*(mem[0xFF4F]&1)] = val;
 	else if (addr<0xC000) // External RAM
 		external_ram[addr-0xA000 + 0x2000*externalRAMBankNumber] = val;
 	else if (addr<0xD000) // Work RAM Bank 0
@@ -51,7 +55,7 @@ void writeByte(uint16_t addr, uint8_t val) {
 	else if (addr<0xE000 && hardwareMode==MODE_DMG) // Work RAM Bank 1
 		mem[addr] = val;
 	else if (addr<0xE000 && hardwareMode==MODE_GBC) // Work RAM Bank 1-7 (GBC)
-		gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70])] = val;
+		gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70]&7)] = val;
 	else if (addr<0xFE00) // Same as C000-DDFF (ECHO)
 		writeByte(addr-0x2000, val);
 	if (addr==0xff50) {
@@ -66,12 +70,15 @@ void writeByte(uint16_t addr, uint8_t val) {
 	else if (addr==0xff04) // Divider Register
 		mem[0xff04] = 0;
 	else if (addr==0xff69) { // GBC Background Palette Data
+		// if (val != 0xff)
+		// 	printf("pc=%04X val=%02X\n", PC, val);
 		int palette_index = mem[0xff68] & 0x3f;
 		bool auto_increment = mem[0xff68] >> 7;
 		gbc_backgr_palettes[palette_index] = val;
 		if (auto_increment) {
 			mem[0xff68]++;
 			mem[0xff68] &= 0x3f;
+			mem[0xff68] |= 0x80;
 		}
 	}
 	else if (addr==0xff6b) { // GBC Sprite Palette Data
@@ -81,6 +88,7 @@ void writeByte(uint16_t addr, uint8_t val) {
 		if (auto_increment) {
 			mem[0xff6a]++;
 			mem[0xff6a] &= 0x3f;
+			mem[0xff6a] |= 0x80;
 		}
 	}
 	else if (addr==0xff55) {
@@ -202,6 +210,14 @@ uint8_t testBit(uint8_t operand, int bit) {
 uint16_t addHL(uint16_t n) {
 	setFlags('-', 0, ((regs.HL&0xfff)+(n&0xfff))>0xfff, (((uint32_t)regs.HL)+n)>0xffff);
 	regs.HL += n;
+}
+
+void stop() {
+	isHalted = true;
+	if (hardwareMode == MODE_GBC && mem[0xFF4D] & 1) {
+		mem[0xFF4D] = 0x80;
+		doubleSpeed = true;
+	}
 }
 
 void ins00() {}
@@ -449,7 +465,7 @@ void insF9() { SP = regs.HL; }
 void insEA() { writeByte(fetchWord(), regs.A); }
 void insFA() { regs.A = readByte(fetchWord()); }
 void insE9() { PC = regs.HL; }
-void ins10() { isHalted = true; }
+void ins10() { stop(); }
 void insCB();
 void cb00() { regs.B = rotate(regs.B, "RLC "); }
 void cb01() { regs.C = rotate(regs.C, "RLC "); }

@@ -37,6 +37,7 @@ typedef enum {
 extern bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
 extern uint32_t *screen_pixels;
 extern uint8_t *gbc_wram;
+extern uint8_t *vram;
 extern uint8_t *external_ram;
 extern uint8_t gbc_backgr_palettes[8*4*2]; // 8 palettes of 4 colors of 2 bytes.
 extern uint8_t gbc_sprite_palettes[8*4*2];
@@ -60,6 +61,7 @@ extern int ROMBankNumber, externalRAMBankNumber;
 extern void (*instrs[512])(void);
 extern t_mode hardwareMode;
 extern int LY;
+extern bool doubleSpeed;
 
 // Internal
 uint8_t		readJoypadRegister();

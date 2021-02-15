@@ -4,6 +4,7 @@ bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
 uint32_t *screen_pixels;
 uint8_t *mem;
 uint8_t *gbc_wram;
+uint8_t *vram;
 uint8_t *external_ram;
 uint8_t *gamerom;
 size_t   gamerom_size;
@@ -59,9 +60,10 @@ bool debug;
 int ROMBankNumber, externalRAMBankNumber;
 t_mode hardwareMode;
 int LY;
+bool doubleSpeed;
 
 void gbmu_reset() {
-	PC = SP = scanlineCycles = divTimerCycles = counterTimerCycles = IME = isBootROMUnmapped = isHalted = ROMBankNumber = externalRAMBankNumber = 0;
+	PC = SP = scanlineCycles = divTimerCycles = counterTimerCycles = IME = isBootROMUnmapped = isHalted = ROMBankNumber = externalRAMBankNumber = doubleSpeed = 0;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
 	if (!screen_pixels)
@@ -73,6 +75,8 @@ void gbmu_reset() {
 	gbc_wram = calloc(1, 32*1024);
 	free(external_ram);
 	external_ram = calloc(1, 32*1024);
+	free(vram);
+	vram = calloc(1, 16*1024);
 }
 
 bool gbmu_load_rom(char *filepath) {
@@ -110,8 +114,15 @@ bool gbmu_run_one_instr() {
 		flag_str[1] = (regs.F & 0x40) ? 'N' : '-';
 		flag_str[2] = (regs.F & 0x20) ? 'H' : '-';
 		flag_str[3] = (regs.F & 0x10) ? 'C' : '-';
-		printf("PC=%04X AF=%04X BC=%04X DE=%04X HL=%04X SP=%04X %.4s Opcode=%02X %02X IE=%04X IF=%04X cnt=%02X IME=%d\n",
-				PC, regs.AF, regs.BC, regs.DE, regs.HL, SP, flag_str, readByte(PC), readByte(PC+1), mem[0xffff], mem[0xff0f], mem[0xff05], IME);
+		printf("PC=%04X AF=%04X BC=%04X DE=%04X HL=%04X SP=%04X %.4s Opcode=%02X %02X lcdc=%02X IE=%02X IF=%02X cnt=%02X IME=%d ",
+				PC, regs.AF, regs.BC, regs.DE, regs.HL, SP, flag_str, readByte(PC), readByte(PC+1), mem[0xFF40], mem[0xffff], mem[0xff0f], mem[0xff05], IME);
+		for (int i=0; i<4; i++) {
+			printf("%04X ", ((uint16_t*)gbc_backgr_palettes)[i]);
+		}
+		for (int i=0; i<4; i++) {
+			printf("%04X ", ((uint16_t*)gbc_sprite_palettes)[i]);
+		}
+		printf("\n");
 		fflush(stdout);
 	}
 
@@ -124,6 +135,8 @@ bool gbmu_run_one_instr() {
 			exit(printf("Invalid opcode: %#x\n", opcode));
 		instrs[opcode]();             // Execute
 	}
+	if (doubleSpeed)
+		cycles /= 2;
 
 	if ((scanlineCycles += cycles) >= 456) {
 		scanlineCycles -= 456;
