@@ -71,22 +71,26 @@ void lcd_draw_current_row() {
 		int tile_number = sprite[2];
 		int spriteY = (int)sprite[0] - 16;
 		int v = LY - spriteY;
+		bool flipX = sprite[3]&0x20;
+		bool flipY = sprite[3]&0x40;
 		if (v < 0)
 			continue;
 		if (LCDC & 0b100) { // 8x16
-			if (v < 8)
-				tile_number &= 0xFE; // Upper tile
-			else if (v < 16) {
-				tile_number |= 1; // Lower tile
-				v -= 8;
-			} else
+			if (v >= 16)
 				continue;
-		} else { // 8x8
-			if (v > 7)
+			bool isUpperTile = (v < 8);
+			if (flipY)
+				isUpperTile = !isUpperTile;
+			if (isUpperTile)
+				tile_number &= 0xFE;
+			else
+				tile_number |= 1;
+			v %= 8;
+		}
+		else { // 8x8
+			if (v >= 8)
 				continue;
 		}
-		bool flipX = sprite[3]&0x20;
-		bool flipY = sprite[3]&0x40;
 		int spriteX = (int)sprite[1] - 8;
 		uint8_t *tile = vram + tile_number*16;
 		if (hardwareMode==MODE_GBC && sprite[3]&8)
