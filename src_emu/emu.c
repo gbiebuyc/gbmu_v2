@@ -135,8 +135,8 @@ bool gbmu_run_one_instr() {
 			exit(printf("Invalid opcode: %#x\n", opcode));
 		instrs[opcode]();             // Execute
 	}
-	if (doubleSpeed)
-		cycles /= 2;
+	// if (doubleSpeed)
+	// 	cycles /= 2;
 
 	if ((scanlineCycles += cycles) >= 456) {
 		scanlineCycles -= 456;
@@ -184,13 +184,15 @@ bool gbmu_run_one_instr() {
 		mem[0xff04]++;
 	}
 
-	int maxTimerCycles = (int[]){1024, 16, 64, 256}[mem[0xff07]&3];
-	if ((counterTimerCycles += cycles) >= maxTimerCycles) {
-		counterTimerCycles -= maxTimerCycles;
-		mem[0xff05]++;
-		if (mem[0xff05] == 0) {
-			mem[0xff05] = mem[0xff06];
-			requestInterrupt(0x04); // Timer Interrupt
+	if (mem[0xff07] & 0b100) {
+		int threshold = (int[]){1024, 16, 64, 256}[mem[0xff07] & 0b11];
+		if ((counterTimerCycles += cycles) >= threshold) {
+			counterTimerCycles -= threshold;
+			mem[0xff05]++;
+			if (mem[0xff05] == 0) {
+				mem[0xff05] = mem[0xff06];
+				requestInterrupt(0x04); // Timer Interrupt
+			}
 		}
 	}
 

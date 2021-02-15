@@ -84,7 +84,7 @@ void writeByte(uint16_t addr, uint8_t val) {
 	else if (addr==0xff6b) { // GBC Sprite Palette Data
 		int palette_index = mem[0xff6a] & 0x3f;
 		bool auto_increment = mem[0xff6a] >> 7;
-		gbc_backgr_palettes[palette_index] = val;
+		gbc_sprite_palettes[palette_index] = val;
 		if (auto_increment) {
 			mem[0xff6a]++;
 			mem[0xff6a] &= 0x3f;

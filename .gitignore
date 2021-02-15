@@ -4,3 +4,4 @@ log
 *.swp
 *.gb
 *.gbc
+instr_timing
