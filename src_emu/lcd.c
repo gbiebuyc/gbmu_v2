@@ -12,6 +12,9 @@ void lcd_clear() {
 }
 
 void lcd_draw_current_row() {
+	static int windowInternalLineCounter = -1;
+	if (LY == 0)
+		windowInternalLineCounter = -1;
 	// Draw BG & Window
 	uint8_t *BGTileMap  = vram + ((LCDC&0x08) ? 0x1c00 : 0x1800);
 	uint8_t *WinTileMap = vram + ((LCDC&0x40) ? 0x1c00 : 0x1800);
@@ -20,15 +23,22 @@ void lcd_draw_current_row() {
 	bool isBGDisplayEnabled = (LCDC&0x01) || hardwareMode==MODE_GBC;
 	bool BGPriority[160];
 	bool BGTransparent[160];
+	int WY=mem[0xff4a], WX=mem[0xff4b]-7;
+	int SCY=mem[0xff42], SCX=mem[0xff43];
+	bool incrementWindowInternalLineCounter = false;
 	for (int screenX=0; screenX<160; screenX++) {
-		int WY=mem[0xff4a], WX=mem[0xff4b]-7;
-		int SCY=mem[0xff42], SCX=mem[0xff43];
 		uint8_t *tileMap;
 		int x, y; // Coordinates in the BG/Window
 		if (isWindowDisplayEnabled && WY<=LY && WX<=screenX) {
 			x = (screenX-WX)&0xff;
 			y = (LY-WY)&0xff;
 			tileMap = WinTileMap;
+			if (windowInternalLineCounter >= 0) {
+				y = windowInternalLineCounter;
+				incrementWindowInternalLineCounter = true;
+			} else {
+				windowInternalLineCounter = y;
+			}
 		} else if (isBGDisplayEnabled) {
 			x = (screenX+SCX)&0xff;
 			y = (LY+SCY)&0xff;
@@ -65,6 +75,8 @@ void lcd_draw_current_row() {
 		}
 		screen_pixels[LY*160 + screenX] = px;
 	}
+	if (incrementWindowInternalLineCounter)
+		windowInternalLineCounter++;
 
 	// Draw Sprites
 	uint8_t *spriteAttrTable = mem+0xfe00;
