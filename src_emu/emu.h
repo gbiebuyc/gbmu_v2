@@ -4,11 +4,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <unistd.h>
-
-void	gbmu_reset();
-bool	gbmu_load_rom(char *filepath);
-bool	gbmu_run_one_instr();
-void	gbmu_run_one_frame();
+#include <ctype.h>
 
 #define SHOW_BOOT_ANIMATION false
 #define FLAG_Z (regs.F>>7&1)
@@ -63,6 +59,12 @@ extern t_mode hardwareMode;
 extern int LY;
 extern bool doubleSpeed;
 
+void	gbmu_reset();
+bool	gbmu_load_rom(char *filepath);
+bool	gbmu_run_one_instr();
+void	gbmu_run_one_frame();
+char	*gbmu_debug_info();
+
 // Internal
 uint8_t		readJoypadRegister();
 void		lcd_clear();
@@ -78,3 +80,7 @@ void		push(uint16_t operand);
 uint16_t	pop();
 int			min(int a, int b);
 int			max(int a, int b);
+char		*get_cartridge_title();
+char		*get_cartridge_type();
+size_t		get_cartridge_size();
+size_t		get_cartridge_ram_size();
