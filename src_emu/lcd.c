@@ -19,7 +19,7 @@ void lcd_draw_current_row() {
 	bool isWindowDisplayEnabled = LCDC&0x20;
 	bool isBGDisplayEnabled = (LCDC&0x01) || hardwareMode==MODE_GBC;
 	bool BGPriority[160];
-	memset(BGPriority, 0, sizeof(BGPriority));
+	bool BGTransparent[160];
 	for (int screenX=0; screenX<160; screenX++) {
 		int WY=mem[0xff4a], WX=mem[0xff4b]-7;
 		int SCY=mem[0xff42], SCX=mem[0xff43];
@@ -52,7 +52,8 @@ void lcd_draw_current_row() {
 		uint16_t pixels = ((uint16_t*)tile)[flipY ? (7-v) : v];
 		uint32_t px = pixels >> (flipX ? u : (7-u));
 		px = (px>>7&2) | (px&1);
-		BGPriority[screenX] = (attributes & 0x80) && (LCDC&0x01) && (px != 0);
+		BGTransparent[screenX] = (px == 0);
+		BGPriority[screenX] = (attributes & 0x80) && (LCDC&0x01);
 		if (hardwareMode == MODE_DMG){
 			px = dmg_palette[(mem[0xff47]>>(px*2))&3];
 		} else {
@@ -104,7 +105,8 @@ void lcd_draw_current_row() {
 		uint16_t pixels = ((uint16_t*)tile)[flipY ? (7-v) : v];
 		uint8_t spritePalette = mem[(sprite[3]&10) ? 0xff49 : 0xff48];
 		for (int screenX=max(0, spriteX); screenX<min(160, spriteX+8); screenX++) {
-			if (hardwareMode==MODE_GBC && BGPriority[screenX])
+			if (hardwareMode==MODE_GBC && !BGTransparent[screenX] &&
+				(BGPriority[screenX] || (sprite[3]&0x80)))
 				continue;
 			int u = screenX - spriteX;
 			uint32_t px = pixels >> (flipX ? u : (7-u));
