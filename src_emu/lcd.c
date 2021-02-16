@@ -115,10 +115,12 @@ void lcd_draw_current_row() {
 		if (hardwareMode==MODE_GBC && sprite[3]&8)
 			tile += 0x2000;
 		uint16_t pixels = ((uint16_t*)tile)[flipY ? (7-v) : v];
-		uint8_t spritePalette = mem[(sprite[3]&10) ? 0xff49 : 0xff48];
+		uint8_t spritePalette = mem[(sprite[3]&0x10) ? 0xff49 : 0xff48];
 		for (int screenX=max(0, spriteX); screenX<min(160, spriteX+8); screenX++) {
 			if (hardwareMode==MODE_GBC && !BGTransparent[screenX] &&
 				(BGPriority[screenX] || (sprite[3]&0x80)))
+				continue;
+			if (hardwareMode==MODE_DMG && !BGTransparent[screenX] && (sprite[3]&0x80))
 				continue;
 			int u = screenX - spriteX;
 			uint32_t px = pixels >> (flipX ? u : (7-u));

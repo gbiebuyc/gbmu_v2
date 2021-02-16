@@ -132,7 +132,7 @@ bool gbmu_run_one_instr() {
 		uint8_t opcode = fetchByte(); // Fetch opcode
 		cycles = cycleTable[opcode];
 		if (!instrs[opcode])
-			exit(printf("Invalid opcode: %#x\n", opcode));
+			exit(printf("Invalid opcode: %#x, PC=%04X\n", opcode, PC));
 		instrs[opcode]();             // Execute
 	}
 	// if (doubleSpeed)
