@@ -1,5 +1,7 @@
 #include "emu.h"
 
+uint16_t hdma_src, hdma_dst;
+
 uint8_t readByte(uint16_t addr) {
 	if (addr<0x100 && !isBootROMUnmapped)
 		return bootrom[addr];
@@ -25,7 +27,7 @@ uint8_t readByte(uint16_t addr) {
 		return gbc_backgr_palettes[mem[0xff68] & 0x3f];
 	else if (addr==0xff6b) // GBC Background Palette Data
 		return gbc_backgr_palettes[mem[0xff6a] & 0x3f];
-	else if (addr==0xFF51 || addr==0xFF52 || addr==0xFF53 || addr==0xFF54) // HDMA
+	else if (addr>=0xFF51 && addr<=0xFF55) // HDMA
 		return 0xFF;
 	else
 		return mem[addr];
@@ -97,11 +99,28 @@ void writeByte(uint16_t addr, uint8_t val) {
 			mem[0xff6a] |= 0x80;
 		}
 	}
+	else if (addr==0xff51) // HDMA Source High byte
+		hdma_src = (hdma_src&0xFF) | (((uint16_t)val)<<8);
+	else if (addr==0xff51) // HDMA Source Low byte
+		hdma_src = ((hdma_src&0xFF00) | val) & 0xFFF0;
+	else if (addr==0xff51) // HDMA Destination High byte
+		hdma_dst = (hdma_dst&0xFF) | (((uint16_t)val)<<8);
+	else if (addr==0xff51) // HDMA Destination Low byte
+		hdma_dst = ((hdma_dst&0xFF00) | val) & 0xFFF0;
 	else if (addr==0xff55) {
+		hdma_dst &= 0X1FFF;
+		hdma_dst |= 0x8000;
 		if (val & 0x80)
 			printf("warning: HDMA not implemented\n");
-		else
-			printf("warning: GDMA not implemented\n");
+		else {
+			printf("GDMA src=%04X dst=%04X\n", hdma_src, hdma_dst);
+			int size = ((val & 0x7F) + 1) * 16;
+			// while (size--) {
+			// 	writeByte(hdma_dst++, readByte(hdma_src++));
+			// }
+			for (int i=0; i<size; i++)
+				writeByte(hdma_dst+i, readByte(hdma_src+i));
+		}
 	}
 	else
 		mem[addr] = val;
