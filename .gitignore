@@ -5,3 +5,5 @@ log
 *.gb
 *.gbc
 instr_timing
+# Windows file metadata
+*Zone.Identifier

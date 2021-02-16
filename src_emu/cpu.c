@@ -25,6 +25,8 @@ uint8_t readByte(uint16_t addr) {
 		return gbc_backgr_palettes[mem[0xff68] & 0x3f];
 	else if (addr==0xff6b) // GBC Background Palette Data
 		return gbc_backgr_palettes[mem[0xff6a] & 0x3f];
+	else if (addr==0xFF51 || addr==0xFF52 || addr==0xFF53 || addr==0xFF54) // HDMA
+		return 0xFF;
 	else
 		return mem[addr];
 }
@@ -65,8 +67,12 @@ void writeByte(uint16_t addr, uint8_t val) {
 	}
 	else if (addr==0xff02 && val==0x81) // Serial Data Transfer (Link Cable)
 		write(STDOUT_FILENO, mem+0xff01, 1);
-	else if (addr==0xff46) // DMA Transfer
-		memcpy(mem+0xfe00, mem+((uint16_t)val<<8), 0xa0);
+	else if (addr==0xff46) { // DMA Transfer
+		uint16_t source = min(0xF1, (uint16_t)val) << 8;
+		for (int i=0; i<=0x9F; i++)
+			mem[0xfe00+i] = readByte(source+i);
+		// TODO: Transfer takes how many clocks?
+	}
 	else if (addr==0xff04) // Divider Register
 		mem[0xff04] = 0;
 	else if (addr==0xff69) { // GBC Background Palette Data
@@ -92,7 +98,10 @@ void writeByte(uint16_t addr, uint8_t val) {
 		}
 	}
 	else if (addr==0xff55) {
-		printf("warning: gbc dma not implemented\n");
+		if (val & 0x80)
+			printf("warning: HDMA not implemented\n");
+		else
+			printf("warning: GDMA not implemented\n");
 	}
 	else
 		mem[addr] = val;
