@@ -248,6 +248,18 @@ void stop() {
 	}
 }
 
+void daa() {
+	int flag_c = '-';
+	if (!FLAG_N) {
+	  if (FLAG_C || regs.A > 0x99) { regs.A += 0x60; flag_c = 1; }
+	  if (FLAG_H || (regs.A & 0x0f) > 0x09) { regs.A += 0x6; }
+	} else {
+	  if (FLAG_C) { regs.A -= 0x60; }
+	  if (FLAG_H) { regs.A -= 0x6; }
+	}
+	setFlags((regs.A == 0), '-', 0, flag_c);
+}
+
 void ins00() {}
 void ins01() {regs.BC = fetchWord(); }
 void ins11() {regs.DE = fetchWord(); }
@@ -295,7 +307,7 @@ void ins07() { regs.A = rotate(regs.A, "RLCA"); }
 void ins0F() { regs.A = rotate(regs.A, "RRCA"); }
 void ins17() { regs.A = rotate(regs.A, "RL A"); }
 void ins1F() { regs.A = rotate(regs.A, "RR A"); }
-void ins27() {} // TODO
+void ins27() { daa(); }
 void ins37() { setFlags('-', 0, 0, 1); }
 void ins2F() { regs.A = ~regs.A; setFlags('-', 1, 1, '-'); }
 void ins3F() { setFlags('-', 0, 0, FLAG_C ? 0 : 1); }
