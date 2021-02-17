@@ -180,6 +180,17 @@ bool btn_run_instr_clicked(GtkWidget *widget, GdkEventKey *event, gpointer data)
 	refresh_ui();
 }
 
+
+void drag_data_received(GtkWidget *widget, GdkDragContext *context, int x, int y,
+	GtkSelectionData *data, guint info, guint time, gpointer user_data) {
+	char *uri = gtk_selection_data_get_uris(data)[0];
+	char *filename = g_filename_from_uri(uri, NULL, NULL);
+	printf("loading rom: %s\n", filename);
+	load_rom(filename);
+	gtk_drag_finish(context, true, false, time);
+}
+
+
 int main(int ac, char **av) {
 	keyboard_state = calloc(0x10000, sizeof(bool));
 
@@ -189,6 +200,9 @@ int main(int ac, char **av) {
 	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
 	g_signal_connect(window, "key_press_event", G_CALLBACK(key_press_event), NULL);
 	g_signal_connect(window, "key_release_event", G_CALLBACK(key_release_event), NULL);
+	g_signal_connect(window, "drag_data_received", G_CALLBACK(drag_data_received), NULL);
+	gtk_drag_dest_set(window, GTK_DEST_DEFAULT_ALL, NULL, 0, GDK_ACTION_MOVE);
+	gtk_drag_dest_add_uri_targets(window);
 
 	GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
 	gtk_container_add(GTK_CONTAINER(window), hbox);
