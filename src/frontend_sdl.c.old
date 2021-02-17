@@ -1,6 +1,6 @@
 #define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
-#include "../src_emu/emu.h"
+#include "emu.h"
 
 int main(int ac, char ** av) {
 	if (!gbmu_load_rom(av[1]))

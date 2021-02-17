@@ -1,6 +1,6 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
-#include "../src_emu/emu.h"
+#include "emu.h"
 
 #define SCREEN_SCALE 2
 

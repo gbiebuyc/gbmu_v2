@@ -1,8 +1,6 @@
 NAME = gbmu
-# SRC = $(wildcard src_emu/*.c) src_frontend/frontend_sdl.c
-SRC = $(wildcard src_emu/*.c) src_frontend/frontend_gtk.c
+SRC = $(wildcard src/*.c)
 OBJ = $(SRC:.c=.o)
-# LIB = sdl2
 LIB = gtk+-3.0
 CFLAGS = `pkg-config $(LIB) --cflags`
 LDFLAGS = `pkg-config $(LIB) --libs`
