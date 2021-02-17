@@ -101,11 +101,11 @@ void writeByte(uint16_t addr, uint8_t val) {
 	}
 	else if (addr==0xff51) // HDMA Source High byte
 		hdma_src = (hdma_src&0xFF) | (((uint16_t)val)<<8);
-	else if (addr==0xff51) // HDMA Source Low byte
+	else if (addr==0xff52) // HDMA Source Low byte
 		hdma_src = ((hdma_src&0xFF00) | val) & 0xFFF0;
-	else if (addr==0xff51) // HDMA Destination High byte
+	else if (addr==0xff53) // HDMA Destination High byte
 		hdma_dst = (hdma_dst&0xFF) | (((uint16_t)val)<<8);
-	else if (addr==0xff51) // HDMA Destination Low byte
+	else if (addr==0xff54) // HDMA Destination Low byte
 		hdma_dst = ((hdma_dst&0xFF00) | val) & 0xFFF0;
 	else if (addr==0xff55) {
 		hdma_dst &= 0X1FFF;

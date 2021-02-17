@@ -3,6 +3,7 @@
 #include "emu.h"
 
 #define SCREEN_SCALE 2
+#define DEBUG_SCREEN_SCALE 2
 
 enum {WAIT, PLAY, PAUSE} state = WAIT;
 GtkWidget *window;
@@ -63,8 +64,11 @@ void refresh_ui() {
 	pixbuf = gdk_pixbuf_new_from_data(
 		(const guchar*)screen_debug_tiles_pixels, GDK_COLORSPACE_RGB,
 		true, 8, SCREEN_DEBUG_TILES_W, SCREEN_DEBUG_TILES_H, SCREEN_DEBUG_TILES_W*4, NULL, NULL);
-	gtk_image_set_from_pixbuf((GtkImage*)image_debug, pixbuf);
+	pixbuf_scaled = gdk_pixbuf_scale_simple(
+		pixbuf, SCREEN_DEBUG_TILES_W * DEBUG_SCREEN_SCALE, SCREEN_DEBUG_TILES_H * DEBUG_SCREEN_SCALE, GDK_INTERP_NEAREST);
+	gtk_image_set_from_pixbuf((GtkImage*)image_debug, pixbuf_scaled);
 	g_object_unref(pixbuf);
+	g_object_unref(pixbuf_scaled);
 	// Debug text
 	gtk_text_buffer_set_text(txtbuf, gbmu_debug_info(), -1);
 }
@@ -220,7 +224,8 @@ int main(int ac, char **av) {
 	gtk_container_add(GTK_CONTAINER(hbox), gtk_separator_new(0));
 
 	image_debug = gtk_image_new();
-	gtk_widget_set_size_request(image_debug, SCREEN_DEBUG_TILES_W, SCREEN_DEBUG_TILES_H);
+	gtk_widget_set_size_request(image_debug, SCREEN_DEBUG_TILES_W * DEBUG_SCREEN_SCALE,
+		SCREEN_DEBUG_TILES_H * DEBUG_SCREEN_SCALE);
 	gtk_container_add(GTK_CONTAINER(hbox), image_debug);
 	gtk_container_add(GTK_CONTAINER(hbox), gtk_separator_new(0));
 
