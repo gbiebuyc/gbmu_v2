@@ -183,10 +183,15 @@ bool btn_run_instr_clicked(GtkWidget *widget, GdkEventKey *event, gpointer data)
 
 void drag_data_received(GtkWidget *widget, GdkDragContext *context, int x, int y,
 	GtkSelectionData *data, guint info, guint time, gpointer user_data) {
-	char *uri = gtk_selection_data_get_uris(data)[0];
-	char *filename = g_filename_from_uri(uri, NULL, NULL);
+	char **uris = gtk_selection_data_get_uris(data);
+	char *filename = NULL;
+	if (uris) {
+		filename = g_filename_from_uri(uris[0], NULL, NULL);
+	}
 	printf("loading rom: %s\n", filename);
 	load_rom(filename);
+	g_strfreev(uris);
+	g_free(filename);
 	gtk_drag_finish(context, true, false, time);
 }
 
