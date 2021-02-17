@@ -11,6 +11,8 @@
 #define FLAG_N (regs.F>>6&1)
 #define FLAG_H (regs.F>>5&1)
 #define FLAG_C (regs.F>>4&1)
+#define SCREEN_DEBUG_TILES_W (32 * (8 + 1))
+#define SCREEN_DEBUG_TILES_H (24 * (8 + 1))
 
 enum {
 	GBMU_SELECT,
@@ -31,10 +33,11 @@ typedef enum {
 } t_mode;
 
 extern bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
-extern uint32_t *screen_pixels;
+extern uint32_t *screen_pixels, *screen_debug_tiles_pixels;
 extern uint8_t *gbc_wram;
 extern uint8_t *vram;
 extern uint8_t *external_ram;
+uint32_t dmg_palette[4];
 extern uint8_t gbc_backgr_palettes[8*4*2]; // 8 palettes of 4 colors of 2 bytes.
 extern uint8_t gbc_sprite_palettes[8*4*2];
 extern uint8_t *mem;
@@ -64,6 +67,7 @@ bool	gbmu_load_rom(char *filepath);
 bool	gbmu_run_one_instr();
 void	gbmu_run_one_frame();
 char	*gbmu_debug_info();
+void	gbmu_update_debug_tiles_screen();
 
 // Internal
 uint8_t		readJoypadRegister();

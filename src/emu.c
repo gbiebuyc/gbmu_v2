@@ -1,7 +1,7 @@
 #include "emu.h"
 
 bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
-uint32_t *screen_pixels;
+uint32_t *screen_pixels, *screen_debug_tiles_pixels;
 uint8_t *mem;
 uint8_t *gbc_wram;
 uint8_t *vram;
@@ -68,6 +68,8 @@ void gbmu_reset() {
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
 	if (!screen_pixels)
 		screen_pixels = malloc(160 * 144 * 4);
+	if (!screen_debug_tiles_pixels)
+		screen_debug_tiles_pixels = malloc(SCREEN_DEBUG_TILES_W * SCREEN_DEBUG_TILES_H * 4);
 	lcd_clear();
 	free(mem);
 	mem = calloc(1, 0x10000);

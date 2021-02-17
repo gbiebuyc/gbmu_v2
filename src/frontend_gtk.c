@@ -7,6 +7,7 @@
 enum {WAIT, PLAY, PAUSE} state = WAIT;
 GtkWidget *window;
 GtkWidget *image;
+GtkWidget *image_debug;
 GtkWidget *txtview;
 GtkTextBuffer *txtbuf;
 bool *keyboard_state;
@@ -48,6 +49,7 @@ bool key_release_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 void refresh_ui() {
 	if (state == WAIT)
 		return;
+	// Screen
 	GdkPixbuf *pixbuf = gdk_pixbuf_new_from_data(
 		(const guchar*)screen_pixels, GDK_COLORSPACE_RGB,
 		true, 8, 160, 144, 160*4, NULL, NULL);
@@ -56,6 +58,14 @@ void refresh_ui() {
 	gtk_image_set_from_pixbuf((GtkImage*)image, pixbuf_scaled);
 	g_object_unref(pixbuf);
 	g_object_unref(pixbuf_scaled);
+	// Tiles debug
+	gbmu_update_debug_tiles_screen();
+	pixbuf = gdk_pixbuf_new_from_data(
+		(const guchar*)screen_debug_tiles_pixels, GDK_COLORSPACE_RGB,
+		true, 8, SCREEN_DEBUG_TILES_W, SCREEN_DEBUG_TILES_H, SCREEN_DEBUG_TILES_W*4, NULL, NULL);
+	gtk_image_set_from_pixbuf((GtkImage*)image_debug, pixbuf);
+	g_object_unref(pixbuf);
+	// Debug text
 	gtk_text_buffer_set_text(txtbuf, gbmu_debug_info(), -1);
 }
 
@@ -207,6 +217,11 @@ int main(int ac, char **av) {
 	image = gtk_image_new();
 	gtk_widget_set_size_request(image, 160*SCREEN_SCALE, 144*SCREEN_SCALE);
 	gtk_container_add(GTK_CONTAINER(hbox), image);
+	gtk_container_add(GTK_CONTAINER(hbox), gtk_separator_new(0));
+
+	image_debug = gtk_image_new();
+	gtk_widget_set_size_request(image_debug, SCREEN_DEBUG_TILES_W, SCREEN_DEBUG_TILES_H);
+	gtk_container_add(GTK_CONTAINER(hbox), image_debug);
 	gtk_container_add(GTK_CONTAINER(hbox), gtk_separator_new(0));
 
 	txtview = gtk_text_view_new();
