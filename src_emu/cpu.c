@@ -192,11 +192,12 @@ void or(uint8_t operand) {
 }
 
 void push(uint16_t operand) {
-	*(uint16_t*)(mem+(SP-=2)) = operand;
+	writeWord(SP-=2, operand);
 }
 
 uint16_t pop() {
-	return *(uint16_t*)(mem+(SP+=2)-2);
+	SP += 2;
+	return readWord(SP-2);
 }
 
 uint8_t rotate(uint8_t operand, char mnemonic[4]) {
