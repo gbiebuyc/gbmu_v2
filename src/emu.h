@@ -61,6 +61,7 @@ extern void (*instrs[512])(void);
 extern t_mode hardwareMode;
 extern int LY;
 extern bool doubleSpeed;
+extern uint8_t mbc1_banking_mode;
 
 void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);
@@ -88,3 +89,4 @@ char		*get_cartridge_title();
 char		*get_cartridge_type();
 size_t		get_cartridge_size();
 size_t		get_cartridge_ram_size();
+void		set_mbc_type();

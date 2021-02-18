@@ -61,9 +61,10 @@ int ROMBankNumber, externalRAMBankNumber;
 t_mode hardwareMode;
 int LY;
 bool doubleSpeed;
+uint8_t mbc1_banking_mode;
 
 void gbmu_reset() {
-	PC = SP = scanlineCycles = divTimerCycles = counterTimerCycles = IME = isBootROMUnmapped = isHalted = ROMBankNumber = externalRAMBankNumber = doubleSpeed = 0;
+	PC = SP = scanlineCycles = divTimerCycles = counterTimerCycles = IME = isBootROMUnmapped = isHalted = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = 0;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
 	if (!screen_pixels)
@@ -96,6 +97,7 @@ bool gbmu_load_rom(char *filepath) {
 		hardwareMode = MODE_DMG;
 	else
 		hardwareMode = MODE_GBC;
+	set_mbc_type();
 	return true;
 }
 
