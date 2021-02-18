@@ -153,10 +153,12 @@ bool gbmu_run_one_instr() {
 		bool coincidenceFlag = LY==LYC;
 		mem[0xff41] = coincidenceFlag ? (mem[0xff41]|4) : (mem[0xff41]&~4);
 		if ((mem[0xff41]&0x40) && coincidenceFlag) {
-			requestInterrupt(0x02); // Coincidence Interrupt
+			if (isDisplayEnabled)
+				requestInterrupt(0x02); // Coincidence Interrupt
 		}
 		if (LY==144) {
-			requestInterrupt(0x01); // V-Blank Interrupt
+			if (isDisplayEnabled)
+				requestInterrupt(0x01); // V-Blank Interrupt
 			if (SHOW_BOOT_ANIMATION || isBootROMUnmapped) {
 				if (!isDisplayEnabled)
 					lcd_clear();
