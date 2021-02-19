@@ -61,6 +61,7 @@ int ROMBankNumber, externalRAMBankNumber;
 t_mode hardwareMode;
 int LY;
 bool doubleSpeed;
+bool zelda_fix;
 uint8_t mbc1_banking_mode;
 
 void gbmu_reset() {
@@ -98,6 +99,7 @@ bool gbmu_load_rom(char *filepath) {
 	else
 		hardwareMode = MODE_GBC;
 	set_mbc_type();
+	zelda_fix = (strncmp(get_cartridge_title(), "ZELDA", 5) == 0);
 	return true;
 }
 
@@ -218,7 +220,8 @@ bool gbmu_run_one_instr() {
 			mem[0xff05]++;
 			if (mem[0xff05] == 0) {
 				mem[0xff05] = mem[0xff06];
-				requestInterrupt(0x04); // Timer Interrupt
+				if (!zelda_fix)
+					requestInterrupt(0x04); // Timer Interrupt
 			}
 		}
 	}
