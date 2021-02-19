@@ -24,9 +24,9 @@ char *gbmu_debug_info() {
 	b += sprintf(b, "hl= %04X  ", regs.HL);
 	b += sprintf(b, "cnt= %02X\n", mem[0xff05]);
 	b += sprintf(b, "sp= %04X  ", SP);
-	b += sprintf(b, "ie=  %02X\n", mem[0xffff]);
+	b += sprintf(b, "ie=  %02X\n", IE);
 	b += sprintf(b, "pc= %04X  ", PC);
-	b += sprintf(b, "if=  %02X\n", mem[0xff0f]);
+	b += sprintf(b, "if=  %02X\n", IF);
 	b += sprintf(b, "ime=%d  ", IME);
 	b += sprintf(b, "flags=%.4s\n", flag_str);
 	b += sprintf(b,

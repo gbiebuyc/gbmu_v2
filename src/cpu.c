@@ -110,14 +110,6 @@ uint16_t addHL(uint16_t n) {
 	regs.HL += n;
 }
 
-void stop() {
-	isHalted = true;
-	if (hardwareMode == MODE_GBC && mem[0xFF4D] & 1) {
-		mem[0xFF4D] = 0x80;
-		doubleSpeed = true;
-	}
-}
-
 void daa() {
 	int flag_c = '-';
 	if (!FLAG_N) {
@@ -375,7 +367,7 @@ void insF9() { SP = regs.HL; }
 void insEA() { writeByte(fetchWord(), regs.A); }
 void insFA() { regs.A = readByte(fetchWord()); }
 void insE9() { PC = regs.HL; }
-void ins10() { stop(); }
+void ins10() { isStopped = true; uint8_t ignored = fetchByte(); }
 void insCB();
 void cb00() { regs.B = rotate(regs.B, "RLC "); }
 void cb01() { regs.C = rotate(regs.C, "RLC "); }

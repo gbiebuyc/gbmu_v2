@@ -11,6 +11,8 @@
 #define FLAG_N (regs.F>>6&1)
 #define FLAG_H (regs.F>>5&1)
 #define FLAG_C (regs.F>>4&1)
+#define IE mem[0xffff]
+#define IF mem[0xff0f]
 #define SCREEN_DEBUG_TILES_W (32 * (8 + 1))
 #define SCREEN_DEBUG_TILES_H (24 * (8 + 1))
 
@@ -54,7 +56,7 @@ extern t_regs regs;
 extern int scanlineCycles, divTimerCycles, counterTimerCycles, cycles;
 extern bool IME;
 extern bool isBootROMUnmapped;
-extern bool isHalted;
+extern bool isHalted, isStopped;
 extern bool debug;
 extern int ROMBankNumber, externalRAMBankNumber;
 extern void (*instrs[512])(void);

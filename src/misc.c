@@ -26,7 +26,7 @@ int max(int a, int b) {
 }
 
 void requestInterrupt(uint8_t interrupt) {
-	if (mem[0xffff] & interrupt)
-		mem[0xff0f] |= interrupt;
+	if (IE & interrupt)
+		IF |= interrupt;
 	isHalted = false;
 }

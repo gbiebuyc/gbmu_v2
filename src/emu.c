@@ -55,7 +55,7 @@ t_regs regs;
 int scanlineCycles, divTimerCycles, counterTimerCycles, cycles;
 bool IME;
 bool isBootROMUnmapped;
-bool isHalted;
+bool isHalted, isStopped;
 bool debug;
 int ROMBankNumber, externalRAMBankNumber;
 t_mode hardwareMode;
@@ -64,7 +64,7 @@ bool doubleSpeed;
 uint8_t mbc1_banking_mode;
 
 void gbmu_reset() {
-	PC = SP = scanlineCycles = divTimerCycles = counterTimerCycles = IME = isBootROMUnmapped = isHalted = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = 0;
+	PC = SP = scanlineCycles = divTimerCycles = counterTimerCycles = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = 0;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
 	if (!screen_pixels)
@@ -112,6 +112,8 @@ bool gbmu_run_one_instr() {
 	bool isFrameReady = false;
 	// if (!debug && PC==0x100)
 	// 	debug = true;
+	// if (PC==0x4083)
+	// 	exit(0);
 	if (debug) {
 		char flag_str[4];
 		flag_str[0] = (regs.F & 0x80) ? 'Z' : '-';
@@ -119,7 +121,7 @@ bool gbmu_run_one_instr() {
 		flag_str[2] = (regs.F & 0x20) ? 'H' : '-';
 		flag_str[3] = (regs.F & 0x10) ? 'C' : '-';
 		printf("PC=%04X AF=%04X BC=%04X DE=%04X HL=%04X SP=%04X %.4s Opcode=%02X %02X lcdc=%02X IE=%02X IF=%02X cnt=%02X IME=%d ",
-				PC, regs.AF, regs.BC, regs.DE, regs.HL, SP, flag_str, readByte(PC), readByte(PC+1), mem[0xFF40], mem[0xffff], mem[0xff0f], mem[0xff05], IME);
+				PC, regs.AF, regs.BC, regs.DE, regs.HL, SP, flag_str, readByte(PC), readByte(PC+1), mem[0xFF40], IE, IF, mem[0xff05], IME);
 		for (int i=0; i<4; i++) {
 			printf("%04X ", ((uint16_t*)gbc_backgr_palettes)[i]);
 		}
@@ -130,7 +132,17 @@ bool gbmu_run_one_instr() {
 		fflush(stdout);
 	}
 
-	if (isHalted)
+	if (isStopped && hardwareMode == MODE_GBC && mem[0xFF4D] & 1) {
+		mem[0xFF4D] = 0x80;
+		doubleSpeed = true;
+		isStopped = false;
+	}
+	if (isStopped && ((readJoypadRegister() & 0xF) != 0xF))
+		isStopped = false;
+	if (isHalted && IE && IF)
+		isHalted = false;
+
+	if (isHalted || isStopped)
 		cycles = 4;
 	else {
 		uint8_t opcode = fetchByte(); // Fetch opcode
@@ -139,11 +151,11 @@ bool gbmu_run_one_instr() {
 			exit(printf("Invalid opcode: %#x, PC=%04X\n", opcode, PC));
 		instrs[opcode]();             // Execute
 	}
-	// if (doubleSpeed)
-	// 	cycles /= 2;
 
-	if ((scanlineCycles += cycles) >= 456) {
-		scanlineCycles -= 456;
+	int scanlineClockThreshold = doubleSpeed ? 912 : 456;
+
+	if ((scanlineCycles += cycles) >= scanlineClockThreshold) {
+		scanlineCycles -= scanlineClockThreshold;
 		mem[0xff44]++;
 		if (mem[0xff44] > 153)
 			mem[0xff44] = 0;
@@ -203,16 +215,14 @@ bool gbmu_run_one_instr() {
 	}
 
 	// Execute interrupts
-	uint8_t IE = mem[0xffff];
-	uint8_t IF = mem[0xff0f];
-	if (IME && IE && IF) {
+	if (!isStopped && IME && IE && IF) {
 		for (int i=0; i<5; i++) {
 			int interrupt_vector = 0x40 + 8*i;
 			int mask = 1<<i;
 			if (IE & IF & mask) {
 				push(PC);
 				PC = interrupt_vector;
-				mem[0xff0f] &= ~mask;
+				IF &= ~mask;
 				IME = 0;
 				break;
 			}
