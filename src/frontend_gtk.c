@@ -20,7 +20,13 @@ GtkWidget *btn_run_instr;
 
 bool key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
-	if (event->keyval == GDK_KEY_F3) {
+	if (event->keyval < 0x10000)
+		keyboard_state[event->keyval] = TRUE;
+	if (event->keyval == GDK_KEY_Escape)
+		gtk_main_quit();
+	else if (event->keyval == GDK_KEY_Pause)
+		gtk_button_clicked((GtkButton*)btn_pause);
+	else if (event->keyval == GDK_KEY_F3) {
 		// Debug palettes
 		for (int j=0; j<8; j++) {
 			for (int i=0; i<4; i++) {
@@ -33,10 +39,6 @@ bool key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 			printf("\n");
 		}
 	}
-	if (event->keyval == GDK_KEY_Escape)
-		gtk_main_quit();
-	if (event->keyval < 0x10000)
-		keyboard_state[event->keyval] = TRUE;
 	return TRUE;
 }
 
