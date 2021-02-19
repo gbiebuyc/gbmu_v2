@@ -13,6 +13,7 @@
 #define FLAG_C (regs.F>>4&1)
 #define IE mem[0xffff]
 #define IF mem[0xff0f]
+#define LCDSTAT mem[0xff41]
 #define SCREEN_DEBUG_TILES_W (32 * (8 + 1))
 #define SCREEN_DEBUG_TILES_H (24 * (8 + 1))
 
@@ -75,7 +76,7 @@ void	gbmu_update_debug_tiles_screen();
 // Internal
 uint8_t		readJoypadRegister();
 void		lcd_clear();
-void		lcd_draw_current_row();
+void		lcd_draw_scanline();
 uint8_t		readByte(uint16_t addr);
 uint16_t	readWord(uint16_t addr);
 void		writeByte(uint16_t addr, uint8_t val);

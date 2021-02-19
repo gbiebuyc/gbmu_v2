@@ -11,7 +11,7 @@ void lcd_clear() {
 		screen_pixels[i] = dmg_palette[0];
 }
 
-void lcd_draw_current_row() {
+void lcd_draw_scanline() {
 	static int windowInternalLineCounter = -1;
 	if (LY == 0)
 		windowInternalLineCounter = -1;

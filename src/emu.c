@@ -152,8 +152,10 @@ bool gbmu_run_one_instr() {
 		instrs[opcode]();             // Execute
 	}
 
+	bool coincidenceFlag = false;
+	bool isDisplayEnabled = mem[0xff40] & 0x80;
 	int scanlineClockThreshold = doubleSpeed ? 912 : 456;
-
+	int old = scanlineClocks;
 	if ((scanlineClocks += clocksIncrement) >= scanlineClockThreshold) {
 		scanlineClocks -= scanlineClockThreshold;
 		mem[0xff44]++;
@@ -161,26 +163,8 @@ bool gbmu_run_one_instr() {
 			mem[0xff44] = 0;
 		LY = mem[0xff44];
 		int LYC = mem[0xff45];
-		bool isDisplayEnabled = mem[0xff40] & 0x80;
-		bool coincidenceFlag = LY==LYC;
-		mem[0xff41] = coincidenceFlag ? (mem[0xff41]|4) : (mem[0xff41]&~4);
-		if ((mem[0xff41]&0x40) && coincidenceFlag) {
-			if (isDisplayEnabled)
-				requestInterrupt(0x02); // Coincidence Interrupt
-		}
-		if (LY==144) {
-			if (isDisplayEnabled)
-				requestInterrupt(0x01); // V-Blank Interrupt
-			if (SHOW_BOOT_ANIMATION || isBootROMUnmapped) {
-				if (!isDisplayEnabled)
-					lcd_clear();
-				isFrameReady = true;
-			}
-		}
-
-		if (LY < 144 && isDisplayEnabled) {
-			lcd_draw_current_row();
-		}
+		coincidenceFlag = LY==LYC;
+		LCDSTAT = coincidenceFlag ? (LCDSTAT|4) : (LCDSTAT&~4);
 	}
 
 	// Set LCD mode flag
@@ -193,8 +177,33 @@ bool gbmu_run_one_instr() {
 		lcd_mode = 3;
 	else
 		lcd_mode = 2;
-	mem[0xff41] &= ~3;
-	mem[0xff41] |= lcd_mode;
+	LCDSTAT &= ~3;
+	LCDSTAT |= lcd_mode;
+
+	if (old < 252 && scanlineClocks >= 252) { // H-Blank Interrupt
+		if (LCDSTAT & 0x08)
+			requestInterrupt(0x02);
+	}
+	if (scanlineClocks < old && LY == 144) { // V-Blank Interrupt
+		if (LCDSTAT & 0x10)
+			requestInterrupt(0x02);
+		if (isDisplayEnabled)
+			requestInterrupt(0x01);
+		if (SHOW_BOOT_ANIMATION || isBootROMUnmapped) {
+			if (!isDisplayEnabled)
+				lcd_clear();
+			isFrameReady = true;
+		}
+	}
+	if (scanlineClocks < old && LY < 144) { // OAM Interrupt
+		if (LCDSTAT & 0x20)
+			requestInterrupt(0x02);
+		lcd_draw_scanline();
+	}
+	if (scanlineClocks < old && coincidenceFlag) { // Coincidence Interrupt
+		if (LCDSTAT & 0x40)
+			requestInterrupt(0x02);
+	}
 
 	// Update timers
 	if ((divTimerClocks += clocksIncrement) >= 256) {

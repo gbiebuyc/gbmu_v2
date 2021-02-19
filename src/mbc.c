@@ -107,7 +107,7 @@ void writeByte(uint16_t addr, uint8_t val) {
 		if (val & 0x80)
 			printf("warning: HDMA not implemented\n");
 		else {
-			printf("GDMA src=%04X dst=%04X\n", hdma_src, hdma_dst);
+			// printf("GDMA src=%04X dst=%04X\n", hdma_src, hdma_dst);
 			int size = ((val & 0x7F) + 1) * 16;
 			// while (size--) {
 			// 	writeByte(hdma_dst++, readByte(hdma_src++));
@@ -231,12 +231,12 @@ void    MBC3_write(uint16_t addr, uint8_t val) {
 		ROMBankNumber = val;
 	else if (addr<0x6000) { // External RAM Bank Number
 		if (val >= 8)
-			printf("warning: write at %#x - rtc register not implemented\n", addr);
+			; // printf("warning: write at %#x - rtc register not implemented\n", addr);
 		else
 			externalRAMBankNumber = val;
 	}
 	else if (addr<0x8000)
-		printf("warning: write at %#x - Latch Clock Data not implemented\n", addr);
+		; //printf("warning: write at %#x - Latch Clock Data not implemented\n", addr);
 }
 
 uint8_t MBC3_readExtRAM(uint16_t addr) {
