@@ -333,20 +333,20 @@ void insD1() { regs.DE=pop(); }
 void insE1() { regs.HL=pop(); }
 void insF1() { regs.AF=pop(); regs.F &= 0xf0; }
 void ins18() { int8_t i=fetchByte(); PC+=i; }
-void ins20() { int8_t i=fetchByte(); if (!FLAG_Z) {PC+=i; cycles+=4;} }
-void ins28() { int8_t i=fetchByte(); if (FLAG_Z) {PC+=i; cycles+=4;} }
-void ins30() { int8_t i=fetchByte(); if (!FLAG_C) {PC+=i; cycles+=4;} }
-void ins38() { int8_t i=fetchByte(); if (FLAG_C) {PC+=i; cycles+=4;} }
+void ins20() { int8_t i=fetchByte(); if (!FLAG_Z) {PC+=i; clocksIncrement+=4;} }
+void ins28() { int8_t i=fetchByte(); if (FLAG_Z) {PC+=i; clocksIncrement+=4;} }
+void ins30() { int8_t i=fetchByte(); if (!FLAG_C) {PC+=i; clocksIncrement+=4;} }
+void ins38() { int8_t i=fetchByte(); if (FLAG_C) {PC+=i; clocksIncrement+=4;} }
 void insC3() { int addr=fetchWord(); PC=addr; }
-void insC2() { int addr=fetchWord(); if (!FLAG_Z) {PC=addr; cycles+=4;} }
-void insCA() { int addr=fetchWord(); if (FLAG_Z) {PC=addr; cycles+=4;} }
-void insD2() { int addr=fetchWord(); if (!FLAG_C) {PC=addr; cycles+=4;} }
-void insDA() { int addr=fetchWord(); if (FLAG_C) {PC=addr; cycles+=4;} }
+void insC2() { int addr=fetchWord(); if (!FLAG_Z) {PC=addr; clocksIncrement+=4;} }
+void insCA() { int addr=fetchWord(); if (FLAG_Z) {PC=addr; clocksIncrement+=4;} }
+void insD2() { int addr=fetchWord(); if (!FLAG_C) {PC=addr; clocksIncrement+=4;} }
+void insDA() { int addr=fetchWord(); if (FLAG_C) {PC=addr; clocksIncrement+=4;} }
 void insCD() { int addr=fetchWord(); push(PC); PC=addr; }
-void insC4() { int addr=fetchWord(); if (!FLAG_Z) {push(PC); PC=addr; cycles+=12;} }
-void insCC() { int addr=fetchWord(); if (FLAG_Z) {push(PC); PC=addr; cycles+=12;} }
-void insD4() { int addr=fetchWord(); if (!FLAG_C) {push(PC); PC=addr; cycles+=12;} }
-void insDC() { int addr=fetchWord(); if (FLAG_C) {push(PC); PC=addr; cycles+=12;} }
+void insC4() { int addr=fetchWord(); if (!FLAG_Z) {push(PC); PC=addr; clocksIncrement+=12;} }
+void insCC() { int addr=fetchWord(); if (FLAG_Z) {push(PC); PC=addr; clocksIncrement+=12;} }
+void insD4() { int addr=fetchWord(); if (!FLAG_C) {push(PC); PC=addr; clocksIncrement+=12;} }
+void insDC() { int addr=fetchWord(); if (FLAG_C) {push(PC); PC=addr; clocksIncrement+=12;} }
 void insE0() { writeByte(0xff00+fetchByte(), regs.A); }
 void insF0() { regs.A = readByte(0xff00+fetchByte()); }
 void insE2() { writeByte(0xff00+regs.C, regs.A); }
@@ -663,6 +663,6 @@ void (*instrs[512])(void) = {
 
 void insCB() {
 	uint8_t op = fetchByte();
-	cycles += ((op&7)==6) ? 16 : 8;
+	clocksIncrement += ((op&7)==6) ? 16 : 8;
 	instrs[op+256]();
 }

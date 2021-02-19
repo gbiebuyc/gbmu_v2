@@ -32,7 +32,7 @@ uint8_t bootrom[] = {
 	0xf5, 0x06, 0x19, 0x78, 0x86, 0x23, 0x05, 0x20, 0xfb, 0x86, 0x20, 0xfe,
 	0x3e, 0x01, 0xe0, 0x50
 };
-uint8_t cycleTable[256] = { // Duration in cycles of each cpu instruction.
+uint8_t clocksTable[256] = { // Duration of each cpu instruction.
 	4,12,8,8,4,4,8,4,20,8,8,8,4,4,8,4,
 	4,12,8,8,4,4,8,4,12,8,8,8,4,4,8,4,
 	8,12,8,8,4,4,8,4,8,8,8,8,4,4,8,4,
@@ -52,7 +52,7 @@ uint8_t cycleTable[256] = { // Duration in cycles of each cpu instruction.
 };
 uint16_t PC, SP;
 t_regs regs;
-int scanlineCycles, divTimerCycles, counterTimerCycles, cycles;
+int scanlineClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
 bool IME;
 bool isBootROMUnmapped;
 bool isHalted, isStopped;
@@ -64,7 +64,7 @@ bool doubleSpeed;
 uint8_t mbc1_banking_mode;
 
 void gbmu_reset() {
-	PC = SP = scanlineCycles = divTimerCycles = counterTimerCycles = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = 0;
+	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = 0;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
 	if (!screen_pixels)
@@ -143,10 +143,10 @@ bool gbmu_run_one_instr() {
 		isHalted = false;
 
 	if (isHalted || isStopped)
-		cycles = 4;
+		clocksIncrement = 4;
 	else {
 		uint8_t opcode = fetchByte(); // Fetch opcode
-		cycles = cycleTable[opcode];
+		clocksIncrement = clocksTable[opcode];
 		if (!instrs[opcode])
 			exit(printf("Invalid opcode: %#x, PC=%04X\n", opcode, PC));
 		instrs[opcode]();             // Execute
@@ -154,8 +154,8 @@ bool gbmu_run_one_instr() {
 
 	int scanlineClockThreshold = doubleSpeed ? 912 : 456;
 
-	if ((scanlineCycles += cycles) >= scanlineClockThreshold) {
-		scanlineCycles -= scanlineClockThreshold;
+	if ((scanlineClocks += clocksIncrement) >= scanlineClockThreshold) {
+		scanlineClocks -= scanlineClockThreshold;
 		mem[0xff44]++;
 		if (mem[0xff44] > 153)
 			mem[0xff44] = 0;
@@ -187,9 +187,9 @@ bool gbmu_run_one_instr() {
 	int lcd_mode;
 	if (LY >= 144)
 		lcd_mode = 1;
-	else if (scanlineCycles >= 252)
+	else if (scanlineClocks >= 252)
 		lcd_mode = 0;
-	else if (scanlineCycles >= 80)
+	else if (scanlineClocks >= 80)
 		lcd_mode = 3;
 	else
 		lcd_mode = 2;
@@ -197,15 +197,15 @@ bool gbmu_run_one_instr() {
 	mem[0xff41] |= lcd_mode;
 
 	// Update timers
-	if ((divTimerCycles += cycles) >= 256) {
-		divTimerCycles -= 256;
+	if ((divTimerClocks += clocksIncrement) >= 256) {
+		divTimerClocks -= 256;
 		mem[0xff04]++;
 	}
 
 	if (mem[0xff07] & 0b100) {
 		int threshold = (int[]){1024, 16, 64, 256}[mem[0xff07] & 0b11];
-		if ((counterTimerCycles += cycles) >= threshold) {
-			counterTimerCycles -= threshold;
+		if ((counterTimerClocks += clocksIncrement) >= threshold) {
+			counterTimerClocks -= threshold;
 			mem[0xff05]++;
 			if (mem[0xff05] == 0) {
 				mem[0xff05] = mem[0xff06];

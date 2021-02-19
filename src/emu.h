@@ -46,14 +46,14 @@ extern uint8_t *mem;
 extern uint8_t *gamerom;
 extern size_t   gamerom_size;
 extern uint8_t bootrom[];
-extern uint8_t cycleTable[256]; // Duration in cycles of each cpu instruction.
+extern uint8_t clocksTable[256]; // Duration of each cpu instruction.
 extern uint16_t PC, SP;
 typedef union {
 	struct { uint16_t AF, BC, DE, HL; };
 	struct { uint8_t F, A, C, B, E, D, L, H; };
 } t_regs;
 extern t_regs regs;
-extern int scanlineCycles, divTimerCycles, counterTimerCycles, cycles;
+extern int scanlineClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
 extern bool IME;
 extern bool isBootROMUnmapped;
 extern bool isHalted, isStopped;

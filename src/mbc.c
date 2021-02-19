@@ -66,8 +66,11 @@ void writeByte(uint16_t addr, uint8_t val) {
 			mem[0xfe00+i] = readByte(source+i);
 		// TODO: Transfer takes how many clocks?
 	}
-	else if (addr==0xff04) // Divider Register
+	else if (addr==0xff04) { // Divider Register
 		mem[0xff04] = 0;
+		divTimerClocks = 0;
+		counterTimerClocks = 0;
+	}
 	else if (addr==0xff69) { // GBC Background Palette Data
 		// if (val != 0xff)
 		// 	printf("pc=%04X val=%02X\n", PC, val);
