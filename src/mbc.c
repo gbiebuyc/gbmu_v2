@@ -161,7 +161,7 @@ uint8_t MBC1_readBank1(uint16_t addr) {
 
 void    MBC1_write(uint16_t addr, uint8_t val) {
 	if (addr<0x2000) // RAM Enable
-		printf("ram enable\n");
+		;
 	else if (addr<0x4000) { // ROM Bank Number
 		ROMBankNumber &= 0b01100000;
 		ROMBankNumber |= (val & 0b00011111);

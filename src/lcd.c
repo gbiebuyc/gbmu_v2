@@ -79,13 +79,14 @@ void lcd_draw_scanline() {
 		windowInternalLineCounter++;
 
 	// Draw Sprites
+	int sorted_sprite_indexes[40];
+	oam_search(sorted_sprite_indexes);
 	uint8_t *spriteAttrTable = mem+0xfe00;
 	bool isSpriteDisplayEnabled = LCDC&0x02;
-	int spritePerLineLimit = 10;
-	for (int i=0; i<40; i++) {
-		if (!isSpriteDisplayEnabled || !spritePerLineLimit)
+	for (int i=0; i<10; i++) {
+		if (!isSpriteDisplayEnabled)
 			break;
-		uint8_t *sprite = spriteAttrTable + i*4;
+		uint8_t *sprite = spriteAttrTable + sorted_sprite_indexes[i]*4;
 		int tile_number = sprite[2];
 		int spriteY = (int)sprite[0] - 16;
 		int v = LY - spriteY;
@@ -109,7 +110,6 @@ void lcd_draw_scanline() {
 			if (v >= 8)
 				continue;
 		}
-		spritePerLineLimit--;
 		int spriteX = (int)sprite[1] - 8;
 		uint8_t *tile = vram + tile_number*16;
 		if (hardwareMode==MODE_GBC && sprite[3]&8)
@@ -139,4 +139,44 @@ void lcd_draw_scanline() {
 			screen_pixels[LY*160 + screenX] = px;
 		}
 	}
+}
+
+bool sprite_is_visible(uint8_t x, uint8_t y) {
+	uint8_t h = (LCDC & 0b100) ? 16 : 8;
+	if (x == 0)
+		return false;
+	if (LY < y)
+		return false;
+	if (LY >= (y + h))
+		return false;
+	return true;
+}
+
+int sprite_compare(const void *a, const void *b) {
+	int i_a = *(int*)a;
+	uint8_t *sprite_a = mem+0xfe00 + i_a*4;
+	uint8_t y_a = sprite_a[0] - 16;
+	uint8_t x_a = sprite_a[1];
+	bool vis_a = sprite_is_visible(x_a, y_a);
+	int i_b = *(int*)b;
+	uint8_t *sprite_b = mem+0xfe00 + i_b*4;
+	uint8_t y_b = sprite_b[0] - 16;
+	uint8_t x_b = sprite_b[1];
+	bool vis_b = sprite_is_visible(x_b, y_b);
+
+	if (vis_a && !vis_b)
+		return -1;
+	if (!vis_a && vis_b)
+		return 1;
+	if (hardwareMode==MODE_GBC && i_a != i_b)
+		return i_b - i_a;
+	if (x_a != x_b)
+		return x_b - x_a;
+	return i_b - i_a;
+}
+
+void oam_search(int array[40]) {
+	for (int i=0; i<40; i++)
+		array[i] = i;
+	qsort(array, 40, sizeof(int), sprite_compare);
 }

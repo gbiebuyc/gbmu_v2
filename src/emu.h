@@ -77,6 +77,7 @@ void	gbmu_update_debug_tiles_screen();
 uint8_t		readJoypadRegister();
 void		lcd_clear();
 void		lcd_draw_scanline();
+void		oam_search(int array[40]);
 uint8_t		readByte(uint16_t addr);
 uint16_t	readWord(uint16_t addr);
 void		writeByte(uint16_t addr, uint8_t val);
