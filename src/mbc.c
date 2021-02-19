@@ -244,9 +244,42 @@ void    MBC3_writeExtRAM(uint16_t addr, uint8_t val) {
 	external_ram[addr-0xA000 + 0x2000*externalRAMBankNumber] = val;
 }
 
+/*
+ * MBC5
+ */
+
+uint8_t MBC5_readBank1(uint16_t addr) {
+	return gamerom[addr-0x4000 + 0x4000*max(1,ROMBankNumber)];
+}
+
+void    MBC5_write(uint16_t addr, uint8_t val) {
+	if (addr<0x2000) // RAM Enable
+		;
+	else if (addr<0x3000) { // ROM Bank (Low bits)
+		ROMBankNumber &= 0xFF00;
+		ROMBankNumber |= val;
+	}
+	else if (addr<0x4000) { // ROM Bank (High bits)
+		ROMBankNumber &= 0x00FF;
+		ROMBankNumber |= (((uint16_t)val)<<8);
+	}
+	else if (addr<0x6000) { // RAM Bank/Enable Rumble
+		externalRAMBankNumber = (val & 0xF);
+	}
+}
+
+uint8_t MBC5_readExtRAM(uint16_t addr) {
+	return external_ram[addr-0xA000 + 0x2000*externalRAMBankNumber];
+}
+
+void    MBC5_writeExtRAM(uint16_t addr, uint8_t val) {
+	external_ram[addr-0xA000 + 0x2000*externalRAMBankNumber] = val;
+}
+
 void set_mbc_type() {
 	uint8_t type = gamerom[0x147];
-	if (type == 0) {
+	if (type==0 || type==8 || type==9) {
+		printf("debug: rom only\n");
 		mbc_readBank1 = ROMOnly_readBank1;
 		mbc_readExtRAM = ROMOnly_readExtRAM;
 		mbc_write = ROMOnly_write;
@@ -260,15 +293,27 @@ void set_mbc_type() {
 		mbc_writeExtRAM = MBC1_writeExtRAM;
 	}
 	else if (type>=5 && type<=6) {
+		printf("debug: MBC2\n");
 		mbc_readBank1 = MBC2_readBank1;
 		mbc_readExtRAM = MBC2_readExtRAM;
 		mbc_write = MBC2_write;
 		mbc_writeExtRAM = MBC2_writeExtRAM;
 	}
-	else {
+	else if (type>=0x0F && type<=0x13) {
+		printf("debug: MBC3\n");
 		mbc_readBank1 = MBC3_readBank1;
 		mbc_readExtRAM = MBC3_readExtRAM;
 		mbc_write = MBC3_write;
 		mbc_writeExtRAM = MBC3_writeExtRAM;
+	}
+	else if (type>=0x19 && type<=0x1E) {
+		printf("debug: MBC5\n");
+		mbc_readBank1 = MBC5_readBank1;
+		mbc_readExtRAM = MBC5_readExtRAM;
+		mbc_write = MBC5_write;
+		mbc_writeExtRAM = MBC5_writeExtRAM;
+	}
+	else {
+		exit(printf("Unsupported MBC chip: %s\n", get_cartridge_type()));
 	}
 }
