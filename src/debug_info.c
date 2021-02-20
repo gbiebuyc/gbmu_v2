@@ -9,6 +9,7 @@ char *gbmu_debug_info() {
 	b += sprintf(b, "Type: %s\n", get_cartridge_type());
 	b += sprintf(b, "ROM size: %ld bytes\n", get_cartridge_size());
 	b += sprintf(b, "RAM size: %ld bytes\n", get_cartridge_ram_size());
+	b += sprintf(b, "Emulating in %s mode\n", (hardwareMode==MODE_DMG) ? "DMG" : "GBC");
 	b += sprintf(b, "\n");
 	char flag_str[4];
 	flag_str[0] = (regs.F & 0x80) ? 'Z' : '-';
@@ -22,7 +23,7 @@ char *gbmu_debug_info() {
 	b += sprintf(b, "de= %04X  ", regs.DE);
 	b += sprintf(b, "ly=  %02X\n", mem[0xff44]);
 	b += sprintf(b, "hl= %04X  ", regs.HL);
-	b += sprintf(b, "cnt= %02X\n", mem[0xff05]);
+	b += sprintf(b, "tima=%02X\n", mem[0xff05]);
 	b += sprintf(b, "sp= %04X  ", SP);
 	b += sprintf(b, "ie=  %02X\n", IE);
 	b += sprintf(b, "pc= %04X  ", PC);
@@ -108,8 +109,10 @@ size_t get_cartridge_size() {
 }
 
 size_t get_cartridge_ram_size() {
+	uint8_t type = gamerom[0x147];
+	bool isMBC2 = (type==5 || type==6);
 	switch (gamerom[0x148]) {
-		case 0x00: return 0 * 1024;
+		case 0x00: return isMBC2 ? 512 : 0;
 		case 0x01: return 2 * 1024;
 		case 0x02: return 8 * 1024;
 		case 0x03: return 32 * 1024;
