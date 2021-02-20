@@ -63,6 +63,7 @@ int LY;
 bool doubleSpeed;
 bool zelda_fix;
 uint8_t mbc1_banking_mode;
+char *savefilename;
 
 void gbmu_reset() {
 	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = 0;
@@ -83,12 +84,12 @@ void gbmu_reset() {
 	vram = calloc(1, 16*1024);
 }
 
-bool gbmu_load_rom(char *filepath) {
+bool gbmu_load_rom(char *filename) {
 	FILE *file;
 	gbmu_reset();
 	free(gamerom);
 	gamerom = calloc(1, 8388608); // max 8 MB cartridges
-	if (!(file = fopen(filepath, "rb")))
+	if (!(file = fopen(filename, "rb")))
 		return false;
 	gamerom_size = 0;
 	while (fread(gamerom + gamerom_size, 1, 0x100, file) == 0x100)
@@ -100,6 +101,12 @@ bool gbmu_load_rom(char *filepath) {
 		hardwareMode = MODE_GBC;
 	set_mbc_type();
 	zelda_fix = (strncmp(get_cartridge_title(), "ZELDA", 5) == 0);
+	free(savefilename);
+	if ((savefilename = malloc(strlen(filename) + 42))) {
+		strcpy(savefilename, filename);
+		strcat(savefilename, ".sav");
+	}
+	gbmu_load_ext_ram();
 	return true;
 }
 

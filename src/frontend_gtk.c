@@ -268,4 +268,5 @@ int main(int ac, char **av) {
 	update_buttons();
 	gtk_widget_show_all(window);
 	gtk_main();
+	gbmu_save_ext_ram();
 }

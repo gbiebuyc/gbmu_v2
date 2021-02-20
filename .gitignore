@@ -4,6 +4,7 @@ log
 *.swp
 *.gb
 *.gbc
+*.sav
 instr_timing
 # Windows file metadata
 *Zone.Identifier

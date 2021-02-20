@@ -7,6 +7,7 @@
 #include <ctype.h>
 
 #define SHOW_BOOT_ANIMATION false
+#define ENABLE_SAVE_FILE false
 #define FLAG_Z (regs.F>>7&1)
 #define FLAG_N (regs.F>>6&1)
 #define FLAG_H (regs.F>>5&1)
@@ -65,6 +66,7 @@ extern t_mode hardwareMode;
 extern int LY;
 extern bool doubleSpeed;
 extern uint8_t mbc1_banking_mode;
+extern char *savefilename;
 
 void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);
@@ -72,6 +74,8 @@ bool	gbmu_run_one_instr();
 void	gbmu_run_one_frame();
 char	*gbmu_debug_info();
 void	gbmu_update_debug_tiles_screen();
+int		gbmu_save_ext_ram();
+int		gbmu_load_ext_ram();
 
 // Internal
 uint8_t		readJoypadRegister();
