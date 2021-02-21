@@ -1,6 +1,6 @@
 #include "emu.h"
 
-uint8_t (*mbc_readBank1)(uint16_t addr);
+uint8_t (*mbc_read)(uint16_t addr);
 void    (*mbc_write)(uint16_t addr, uint8_t val);
 uint8_t (*mbc_readExtRAM)(uint16_t addr);
 void    (*mbc_writeExtRAM)(uint16_t addr, uint8_t val);
@@ -9,10 +9,8 @@ uint16_t hdma_src, hdma_dst;
 uint8_t readByte(uint16_t addr) {
 	if (addr<0x100 && !isBootROMUnmapped)
 		return bootrom[addr];
-	else if (addr<0x4000) // ROM bank 00
-		return gamerom[addr];
-	else if (addr<0x8000) // ROM Bank 01~NN
-		return mbc_readBank1(addr);
+	else if (addr<0x8000) // ROM
+		return mbc_read(addr);
 	else if (addr<0xA000) // VRAM
 		return vram[addr-0x8000 + 0x2000*(mem[0xFF4F]&1)];
 	else if (addr<0xC000) // External RAM
@@ -133,7 +131,7 @@ void writeWord(uint16_t addr, uint16_t val) {
  * ROM Only
  */
 
-uint8_t ROMOnly_readBank1(uint16_t addr) {
+uint8_t ROMOnly_read(uint16_t addr) {
 	return gamerom[addr];
 }
 
@@ -152,75 +150,95 @@ void    ROMOnly_writeExtRAM(uint16_t addr, uint8_t val) {
  * MBC1
  */
 
-uint8_t MBC1_readBank1(uint16_t addr) {
-	ROMBankNumber &= 0b01111111;
-	if (ROMBankNumber==0x20 || ROMBankNumber==0x40 || ROMBankNumber==0x60)
-		ROMBankNumber++;
-	return gamerom[addr-0x4000 + 0x4000*max(1,ROMBankNumber)];
+uint8_t MBC1_read(uint16_t addr) {
+	mbc1_bank1_reg &= 0b11111;
+	mbc1_bank2_reg &= 0b11;
+	if (mbc1_bank1_reg == 0)
+		mbc1_bank1_reg++;
+	if (addr < 0x4000 && mbc1_banking_mode == 0)
+		ROMBankNumber = 0;
+	else if (addr < 0x4000 && mbc1_banking_mode == 1)
+		ROMBankNumber = mbc1_bank2_reg<<5;
+	else {
+		ROMBankNumber = mbc1_bank1_reg | (mbc1_bank2_reg<<5);
+		addr -= 0x4000;
+	}
+	ROMBankNumber &= numROMBanks-1;
+	return gamerom[addr + 0x4000*ROMBankNumber];
 }
 
 void    MBC1_write(uint16_t addr, uint8_t val) {
 	if (addr<0x2000) // RAM Enable
-		;
-	else if (addr<0x4000) { // ROM Bank Number
-		ROMBankNumber &= 0b01100000;
-		ROMBankNumber |= (val & 0b00011111);
-		if (mbc1_banking_mode == 1)
-			ROMBankNumber &= 0b00011111;
-	}
+		mbc_ram_enable = ((val & 0xF) == 0b1010);
+	else if (addr<0x4000) // ROM Bank Number
+		mbc1_bank1_reg = val & 0b11111;
 	else if (addr<0x6000) { // RAM Bank Number - or - Upper Bits of ROM Bank Number
-		if (mbc1_banking_mode == 0) {
-			ROMBankNumber &= 0b00011111;
-			ROMBankNumber |= (val << 5);
-		} else {
-			externalRAMBankNumber = val&3;
-		}
+		mbc1_bank2_reg = val & 0b11;
 	}
 	else if (addr<0x8000) // ROM/RAM Mode Select
 		mbc1_banking_mode = val & 1;
 }
 
 uint8_t MBC1_readExtRAM(uint16_t addr) {
-	if (mbc1_banking_mode == 0)
-		return external_ram[addr-0xA000];
-	return external_ram[addr-0xA000 + 0x2000*(externalRAMBankNumber&3)];
+	if (!mbc_ram_enable)
+		return 0xff;
+	addr -= 0xA000;
+	if (mbc1_banking_mode == 1)
+		addr += 0x2000*mbc1_bank2_reg;
+	addr &= (extRAMSize - 1);
+	return external_ram[addr];
 }
 
 void    MBC1_writeExtRAM(uint16_t addr, uint8_t val) {
-	if (mbc1_banking_mode == 0)
-		external_ram[addr-0xA000] = val;
-	else
-		external_ram[addr-0xA000 + 0x2000*(externalRAMBankNumber&3)] = val;
+	if (!mbc_ram_enable)
+		return;
+	addr -= 0xA000;
+	if (mbc1_banking_mode == 1)
+		addr += 0x2000*mbc1_bank2_reg;
+	addr &= (extRAMSize - 1);
+	external_ram[addr] = val;
 }
 
 /*
  * MBC2
  */
 
-uint8_t MBC2_readBank1(uint16_t addr) {
-	return gamerom[addr-0x4000 + 0x4000*max(1,ROMBankNumber)];
+uint8_t MBC2_read(uint16_t addr) {
+	if (addr < 0x4000)
+		return gamerom[addr];
+	if (ROMBankNumber==0)
+		ROMBankNumber++;
+	ROMBankNumber &= numROMBanks-1;
+	return gamerom[addr-0x4000 + 0x4000*ROMBankNumber];
 }
 
 void    MBC2_write(uint16_t addr, uint8_t val) {
-	if (addr<0x2000) // RAM Enable
-		;
-	else if (addr<0x4000)  // ROM Bank Number
-		ROMBankNumber = val;
+	if (addr < 0x4000) {
+		if (addr & 0x100)
+			ROMBankNumber = val & 0xF;
+		else 
+			mbc_ram_enable = ((val & 0xF) == 0b1010);
+	}
 }
 
 uint8_t MBC2_readExtRAM(uint16_t addr) {
-	return external_ram[addr-0xA000];
+	if (!mbc_ram_enable)
+		return 0xff;
+	return external_ram[(addr-0xA000) & 0x1FF] | 0xF0;
 }
 
 void    MBC2_writeExtRAM(uint16_t addr, uint8_t val) {
-	external_ram[addr-0xA000] = val;
+	if (mbc_ram_enable)
+		external_ram[(addr-0xA000) & 0x1FF] = val;
 }
 
 /*
  * MBC3
  */
 
-uint8_t MBC3_readBank1(uint16_t addr) {
+uint8_t MBC3_read(uint16_t addr) {
+	if (addr < 0x4000)
+		return gamerom[addr];
 	return gamerom[addr-0x4000 + 0x4000*max(1,ROMBankNumber)];
 }
 
@@ -251,8 +269,11 @@ void    MBC3_writeExtRAM(uint16_t addr, uint8_t val) {
  * MBC5
  */
 
-uint8_t MBC5_readBank1(uint16_t addr) {
-	return gamerom[addr-0x4000 + 0x4000*max(1,ROMBankNumber)];
+uint8_t MBC5_read(uint16_t addr) {
+	if (addr < 0x4000)
+		return gamerom[addr];
+	ROMBankNumber &= numROMBanks-1;
+	return gamerom[addr-0x4000 + 0x4000*max(1, ROMBankNumber)];
 }
 
 void    MBC5_write(uint16_t addr, uint8_t val) {
@@ -264,7 +285,7 @@ void    MBC5_write(uint16_t addr, uint8_t val) {
 	}
 	else if (addr<0x4000) { // ROM Bank (High bits)
 		ROMBankNumber &= 0x00FF;
-		ROMBankNumber |= (((uint16_t)val)<<8);
+		ROMBankNumber |= (((uint16_t)val&1)<<8);
 	}
 	else if (addr<0x6000) { // RAM Bank/Enable Rumble
 		externalRAMBankNumber = (val & 0xF);
@@ -283,35 +304,35 @@ void set_mbc_type() {
 	uint8_t type = gamerom[0x147];
 	if (type==0 || type==8 || type==9) {
 		printf("debug: rom only\n");
-		mbc_readBank1 = ROMOnly_readBank1;
+		mbc_read = ROMOnly_read;
 		mbc_readExtRAM = ROMOnly_readExtRAM;
 		mbc_write = ROMOnly_write;
 		mbc_writeExtRAM = ROMOnly_writeExtRAM;
 	}
 	else if (type>=1 && type<=3) {
 		printf("debug: MBC1\n");
-		mbc_readBank1 = MBC1_readBank1;
+		mbc_read = MBC1_read;
 		mbc_readExtRAM = MBC1_readExtRAM;
 		mbc_write = MBC1_write;
 		mbc_writeExtRAM = MBC1_writeExtRAM;
 	}
 	else if (type>=5 && type<=6) {
 		printf("debug: MBC2\n");
-		mbc_readBank1 = MBC2_readBank1;
+		mbc_read = MBC2_read;
 		mbc_readExtRAM = MBC2_readExtRAM;
 		mbc_write = MBC2_write;
 		mbc_writeExtRAM = MBC2_writeExtRAM;
 	}
 	else if (type>=0x0F && type<=0x13) {
 		printf("debug: MBC3\n");
-		mbc_readBank1 = MBC3_readBank1;
+		mbc_read = MBC3_read;
 		mbc_readExtRAM = MBC3_readExtRAM;
 		mbc_write = MBC3_write;
 		mbc_writeExtRAM = MBC3_writeExtRAM;
 	}
 	else if (type>=0x19 && type<=0x1E) {
 		printf("debug: MBC5\n");
-		mbc_readBank1 = MBC5_readBank1;
+		mbc_read = MBC5_read;
 		mbc_readExtRAM = MBC5_readExtRAM;
 		mbc_write = MBC5_write;
 		mbc_writeExtRAM = MBC5_writeExtRAM;

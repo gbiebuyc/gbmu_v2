@@ -7,8 +7,9 @@ char *gbmu_debug_info() {
 	char *b = buf;
 	b += sprintf(b, "Title: %s\n", get_cartridge_title());
 	b += sprintf(b, "Type: %s\n", get_cartridge_type());
-	b += sprintf(b, "ROM size: %ld bytes\n", get_cartridge_size());
-	b += sprintf(b, "RAM size: %ld bytes\n", get_cartridge_ram_size());
+	b += sprintf(b, "ROM banks: %d\n", numROMBanks);
+	b += sprintf(b, "ROM size: %u bytes\n", ((unsigned)numROMBanks) * 0x4000);
+	b += sprintf(b, "RAM size: %d bytes\n", extRAMSize);
 	b += sprintf(b, "Emulating in %s mode\n", (hardwareMode==MODE_DMG) ? "DMG" : "GBC");
 	b += sprintf(b, "\n");
 	char flag_str[4];
@@ -91,27 +92,10 @@ char *get_cartridge_type() {
 	return "Unknown";
 }
 
-size_t get_cartridge_size() {
-	switch (gamerom[0x148]) {
-		case 0x00: return 2 * 16384;
-		case 0x01: return 4 * 16384;
-		case 0x02: return 8 * 16384;
-		case 0x03: return 16 * 16384;
-		case 0x04: return 32 * 16384;
-		case 0x05: return 64 * 16384;
-		case 0x06: return 128 * 16384;
-		case 0x07: return 256 * 16384;
-		case 0x52: return 72 * 16384;
-		case 0x53: return 80 * 16384;
-		case 0x54: return 96 * 16384;
-	}
-	return 0;
-}
-
-size_t get_cartridge_ram_size() {
+int get_cartridge_ram_size() {
 	uint8_t type = gamerom[0x147];
 	bool isMBC2 = (type==5 || type==6);
-	switch (gamerom[0x148]) {
+	switch (gamerom[0x149]) {
 		case 0x00: return isMBC2 ? 512 : 0;
 		case 0x01: return 2 * 1024;
 		case 0x02: return 8 * 1024;

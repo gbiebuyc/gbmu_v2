@@ -58,15 +58,17 @@ bool isBootROMUnmapped;
 bool isHalted, isStopped;
 bool debug;
 int ROMBankNumber, externalRAMBankNumber;
+int numROMBanks, extRAMSize;
 t_mode hardwareMode;
 int LY;
 bool doubleSpeed;
 bool zelda_fix;
-uint8_t mbc1_banking_mode;
+uint8_t mbc1_banking_mode, mbc1_bank1_reg, mbc1_bank2_reg;
+bool mbc_ram_enable;
 char *savefilename;
 
 void gbmu_reset() {
-	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = 0;
+	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = 0;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
 	if (!screen_pixels)
@@ -107,6 +109,8 @@ bool gbmu_load_rom(char *filename) {
 		strcat(savefilename, ".sav");
 	}
 	gbmu_load_ext_ram();
+	numROMBanks = (2 << min(8, gamerom[0x148]));
+	extRAMSize = get_cartridge_ram_size();
 	return true;
 }
 
@@ -119,9 +123,9 @@ void gbmu_run_one_frame() {
 
 bool gbmu_run_one_instr() {
 	bool isFrameReady = false;
-	// if (!debug && PC==0x100)
+	// if (!debug && PC==0x01da)
 	// 	debug = true;
-	// if (PC==0x4083)
+	// if (PC==0x486e)
 	// 	exit(0);
 	if (debug) {
 		char flag_str[4];
@@ -131,12 +135,12 @@ bool gbmu_run_one_instr() {
 		flag_str[3] = (regs.F & 0x10) ? 'C' : '-';
 		printf("PC=%04X AF=%04X BC=%04X DE=%04X HL=%04X SP=%04X %.4s Opcode=%02X %02X lcdc=%02X IE=%02X IF=%02X cnt=%02X IME=%d ",
 				PC, regs.AF, regs.BC, regs.DE, regs.HL, SP, flag_str, readByte(PC), readByte(PC+1), mem[0xFF40], IE, IF, mem[0xff05], IME);
-		for (int i=0; i<4; i++) {
-			printf("%04X ", ((uint16_t*)gbc_backgr_palettes)[i]);
-		}
-		for (int i=0; i<4; i++) {
-			printf("%04X ", ((uint16_t*)gbc_sprite_palettes)[i]);
-		}
+		// for (int i=0; i<4; i++) {
+		// 	printf("%04X ", ((uint16_t*)gbc_backgr_palettes)[i]);
+		// }
+		// for (int i=0; i<4; i++) {
+		// 	printf("%04X ", ((uint16_t*)gbc_sprite_palettes)[i]);
+		// }
 		printf("\n");
 		fflush(stdout);
 	}
