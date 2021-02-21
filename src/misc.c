@@ -30,3 +30,15 @@ void requestInterrupt(uint8_t interrupt) {
 		IF |= interrupt;
 	isHalted = false;
 }
+
+void hdma_transfer_continue() {
+	if (!hdma_remaining_size)
+		return;
+	if (LY >= 144)
+		return;
+	for (int i=0; i<16; i++)
+		writeByte(hdma_dst+i, readByte(hdma_src+i));
+	hdma_src += 16;
+	hdma_dst += 16;
+	hdma_remaining_size -= 16;
+}

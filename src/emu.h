@@ -69,6 +69,8 @@ extern bool doubleSpeed;
 extern uint8_t mbc1_banking_mode, mbc1_bank1_reg, mbc1_bank2_reg;
 extern bool mbc_ram_enable;
 extern char *savefilename;
+extern uint16_t hdma_src, hdma_dst;
+extern size_t hdma_remaining_size;
 
 void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);
@@ -99,3 +101,4 @@ char		*get_cartridge_title();
 char		*get_cartridge_type();
 int			get_cartridge_ram_size();
 void		set_mbc_type();
+void		hdma_transfer_continue();

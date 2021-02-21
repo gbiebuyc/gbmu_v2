@@ -5,6 +5,7 @@ void    (*mbc_write)(uint16_t addr, uint8_t val);
 uint8_t (*mbc_readExtRAM)(uint16_t addr);
 void    (*mbc_writeExtRAM)(uint16_t addr, uint8_t val);
 uint16_t hdma_src, hdma_dst;
+size_t   hdma_remaining_size;
 
 uint8_t readByte(uint16_t addr) {
 	if (addr<0x100 && !isBootROMUnmapped)
@@ -30,8 +31,11 @@ uint8_t readByte(uint16_t addr) {
 		return gbc_backgr_palettes[mem[0xff68] & 0x3f];
 	else if (addr==0xff6b) // GBC Background Palette Data
 		return gbc_backgr_palettes[mem[0xff6a] & 0x3f];
-	else if (addr>=0xFF51 && addr<=0xFF55) // HDMA
-		return 0xFF;
+	else if (addr==0xff55) { // HDMA
+		if (!hdma_remaining_size)
+			return 0xFF;
+		return (hdma_remaining_size / 16) - 1;
+	}
 	else
 		return mem[addr];
 }
@@ -102,11 +106,12 @@ void writeByte(uint16_t addr, uint8_t val) {
 	else if (addr==0xff55) {
 		hdma_dst &= 0X1FFF;
 		hdma_dst |= 0x8000;
-		if (val & 0x80)
-			printf("warning: HDMA not implemented\n");
-		else {
+		int size = ((val & 0x7F) + 1) * 16;
+		if (val & 0x80) { // HDMA
+			hdma_remaining_size = size;
+		}
+		else { // GDMA
 			// printf("GDMA src=%04X dst=%04X\n", hdma_src, hdma_dst);
-			int size = ((val & 0x7F) + 1) * 16;
 			// while (size--) {
 			// 	writeByte(hdma_dst++, readByte(hdma_src++));
 			// }

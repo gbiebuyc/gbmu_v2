@@ -196,6 +196,7 @@ bool gbmu_run_one_instr() {
 	if (old < 252 && scanlineClocks >= 252) { // H-Blank Interrupt
 		if (LCDSTAT & 0x08)
 			requestInterrupt(0x02);
+		hdma_transfer_continue();
 	}
 	if (scanlineClocks < old && LY == 144) { // V-Blank Interrupt
 		if (LCDSTAT & 0x10)
