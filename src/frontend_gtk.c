@@ -17,6 +17,7 @@ GtkWidget *btn_pause;
 GtkWidget *btn_reset;
 GtkWidget *btn_run_frame;
 GtkWidget *btn_run_instr;
+GtkWidget *btn_force_dmg_gbc;
 
 bool key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
@@ -49,7 +50,7 @@ bool key_release_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 	return TRUE;
 }
 
-void refresh_ui() {
+void refresh_screen() {
 	if (state == WAIT)
 		return;
 	// Screen
@@ -90,7 +91,7 @@ bool timeout_cb(void *data) {
 	if (state == PLAY) {
 		update_input();
 		gbmu_run_one_frame();
-		refresh_ui();
+		refresh_screen();
 	}
 	return true;
 }
@@ -119,6 +120,10 @@ void update_buttons() {
 			gtk_widget_set_sensitive(btn_run_instr, false);
 			break;
 	}
+	if (hardwareMode == MODE_DMG)
+		gtk_button_set_label((GtkButton*)btn_force_dmg_gbc, "Force GBC");
+	else if (hardwareMode == MODE_GBC)
+		gtk_button_set_label((GtkButton*)btn_force_dmg_gbc, "Force DMG");
 }
 
 void load_rom(char *filename) {
@@ -167,19 +172,19 @@ bool btn_pause_clicked(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 
 bool btn_reset_clicked(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 	gbmu_reset();
-	refresh_ui();
+	refresh_screen();
 }
 
 bool btn_run_frame_clicked(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 	update_input();
 	gbmu_run_one_frame();
-	refresh_ui();
+	refresh_screen();
 }
 
 bool btn_run_instr_clicked(GtkWidget *widget, GdkEventKey *event, gpointer data) {
 	update_input();
 	gbmu_run_one_instr();
-	refresh_ui();
+	refresh_screen();
 }
 
 
@@ -195,6 +200,16 @@ void drag_data_received(GtkWidget *widget, GdkDragContext *context, int x, int y
 	g_strfreev(uris);
 	g_free(filename);
 	gtk_drag_finish(context, true, false, time);
+}
+
+void btn_force_dmg_gbc_clicked() {
+	gbmu_reset();
+	if (hardwareMode == MODE_DMG)
+		hardwareMode = MODE_GBC;
+	else if (hardwareMode == MODE_GBC)
+		hardwareMode = MODE_DMG;
+	update_buttons();
+	refresh_screen();
 }
 
 
@@ -236,6 +251,10 @@ int main(int ac, char **av) {
 	btn_run_instr = gtk_button_new_with_label("Run instr");
 	g_signal_connect(btn_run_instr, "clicked", G_CALLBACK(btn_run_instr_clicked), NULL);
 	gtk_box_pack_start((GtkBox*)vbox, btn_run_instr, 0, 0, 0);
+
+	btn_force_dmg_gbc = gtk_button_new();
+	g_signal_connect(btn_force_dmg_gbc, "clicked", G_CALLBACK(btn_force_dmg_gbc_clicked), NULL);
+	gtk_box_pack_start((GtkBox*)vbox, btn_force_dmg_gbc, 0, 0, 0);
 
 	gtk_container_add(GTK_CONTAINER(hbox), gtk_separator_new(0));
 
