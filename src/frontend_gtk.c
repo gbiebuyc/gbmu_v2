@@ -5,7 +5,7 @@
 #define SCREEN_SCALE 2
 #define DEBUG_SCREEN_SCALE 2
 
-enum {WAIT, PLAY, PAUSE} state = WAIT;
+enum {PLAY, PAUSE} state;
 GtkWidget *window;
 GtkWidget *image;
 GtkWidget *image_debug;
@@ -51,8 +51,6 @@ bool key_release_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 }
 
 void refresh_screen() {
-	if (state == WAIT)
-		return;
 	// Screen
 	GdkPixbuf *pixbuf = gdk_pixbuf_new_from_data(
 		(const guchar*)screen_pixels, GDK_COLORSPACE_RGB,
@@ -100,24 +98,13 @@ void update_buttons() {
 	switch (state) {
 		case PLAY:
 			gtk_button_set_label((GtkButton*)btn_pause, "Pause");
-			gtk_widget_set_sensitive(btn_pause, true);
-			gtk_widget_set_sensitive(btn_reset, true);
 			gtk_widget_set_sensitive(btn_run_frame, false);
 			gtk_widget_set_sensitive(btn_run_instr, false);
 			break;
 		case PAUSE:
 			gtk_button_set_label((GtkButton*)btn_pause, "Play");
-			gtk_widget_set_sensitive(btn_pause, true);
-			gtk_widget_set_sensitive(btn_reset, true);
 			gtk_widget_set_sensitive(btn_run_frame, true);
 			gtk_widget_set_sensitive(btn_run_instr, true);
-			break;
-		case WAIT:
-			gtk_button_set_label((GtkButton*)btn_pause, "Pause");
-			gtk_widget_set_sensitive(btn_pause, false);
-			gtk_widget_set_sensitive(btn_reset, false);
-			gtk_widget_set_sensitive(btn_run_frame, false);
-			gtk_widget_set_sensitive(btn_run_instr, false);
 			break;
 	}
 	if (hardwareMode == MODE_DMG)
@@ -127,21 +114,9 @@ void update_buttons() {
 }
 
 void load_rom(char *filename) {
-	if (gbmu_load_rom(filename)) {
-		state = PLAY;
-		update_buttons();
-	} else {
-		state = WAIT;
-		update_buttons();
-		GtkWidget *dialog = gtk_message_dialog_new (
-			(GtkWindow*)window,
-			GTK_DIALOG_DESTROY_WITH_PARENT,
-			GTK_MESSAGE_WARNING,
-			GTK_BUTTONS_CLOSE,
-			"Error loading rom.");
-		gtk_dialog_run (GTK_DIALOG (dialog));
-		gtk_widget_destroy (dialog);
-	}
+	gbmu_load_rom(filename);
+	state = PLAY;
+	update_buttons();
 }
 
 bool btn_load_clicked(GtkWidget *widget, GdkEventKey *event, gpointer data) {
@@ -284,9 +259,7 @@ int main(int ac, char **av) {
 		enable_save_file = false;
 	}
 
-	if (av[1]) {
-		load_rom(av[1]);
-	}
+	load_rom(av[1]);
 
 	g_timeout_add_full(G_PRIORITY_HIGH, 16, (GSourceFunc)timeout_cb, NULL, NULL);
 	update_buttons();

@@ -101,6 +101,6 @@ int			max(int a, int b);
 char		*get_cartridge_title();
 char		*get_cartridge_type();
 int			get_cartridge_ram_size();
-void		set_mbc_type();
+void		set_mbc_type(uint8_t type);
 void		hdma_transfer_continue();
 char		*disassemble_instr(uint16_t addr);

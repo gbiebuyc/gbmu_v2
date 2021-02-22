@@ -73,25 +73,29 @@ void gbmu_reset() {
 }
 
 bool gbmu_load_rom(char *filename) {
-	FILE *file;
 	gbmu_reset();
 	free(gamerom);
-	if (!(gamerom = calloc(1, 8388608))) // max 8 MB cartridges
+	if (!(gamerom = malloc(8*1024*1024))) // max 8 MB cartridges
 		exit(printf("malloc error\n"));
-	if (!(file = fopen(filename, "rb")))
-		return false;
-	gamerom_size = 0;
-	while (fread(gamerom + gamerom_size, 1, 0x100, file) == 0x100)
-		gamerom_size += 0x100;
-	fclose(file);
+	memset(gamerom, 0xFF, 8*1024*1024);
+	FILE *file;
+	if ((file = fopen(filename, "rb"))) {
+		gamerom_size = 0;
+		while (fread(gamerom + gamerom_size, 1, 0x100, file) == 0x100)
+			if ((gamerom_size += 0x100) >= 8*1024*1024)
+				break;
+		fclose(file);
+	} else {
+		show_boot_animation = true;
+	}
 	if (gamerom[0x143] == MODE_DMG)
 		hardwareMode = MODE_DMG;
 	else
 		hardwareMode = MODE_GBC;
-	set_mbc_type();
+	set_mbc_type(file ? gamerom[0x147] : 0);
 	zelda_fix = (strncmp(get_cartridge_title(), "ZELDA", 5) == 0);
 	free(savefilename);
-	if ((savefilename = malloc(strlen(filename) + 42))) {
+	if (filename && (savefilename = malloc(strlen(filename) + 42))) {
 		strcpy(savefilename, filename);
 		strcat(savefilename, ".sav");
 	}
