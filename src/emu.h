@@ -6,8 +6,6 @@
 #include <unistd.h>
 #include <ctype.h>
 
-#define SHOW_BOOT_ANIMATION false
-#define ENABLE_SAVE_FILE false
 #define FLAG_Z (regs.F>>7&1)
 #define FLAG_N (regs.F>>6&1)
 #define FLAG_H (regs.F>>5&1)
@@ -47,7 +45,8 @@ extern uint8_t gbc_sprite_palettes[8*4*2];
 extern uint8_t *mem;
 extern uint8_t *gamerom;
 extern size_t   gamerom_size;
-extern uint8_t bootrom[];
+extern uint8_t bootrom_dmg[];
+extern uint8_t bootrom_gbc[];
 extern uint8_t clocksTable[256]; // Duration of each cpu instruction.
 extern uint16_t PC, SP;
 typedef union {
@@ -71,6 +70,7 @@ extern bool mbc_ram_enable;
 extern char *savefilename;
 extern uint16_t hdma_src, hdma_dst;
 extern size_t hdma_remaining_size;
+extern bool show_boot_animation, enable_save_file;
 
 void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);

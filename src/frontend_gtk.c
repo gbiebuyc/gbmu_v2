@@ -279,6 +279,11 @@ int main(int ac, char **av) {
 	txtbuf = gtk_text_view_get_buffer((GtkTextView*)txtview);
 	gtk_container_add(GTK_CONTAINER(hbox), txtview);
 
+	if (getenv("GBMU_DEBUG")) {
+		show_boot_animation = false;
+		enable_save_file = false;
+	}
+
 	if (av[1]) {
 		load_rom(av[1]);
 	}

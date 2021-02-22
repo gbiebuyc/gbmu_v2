@@ -8,8 +8,11 @@ uint16_t hdma_src, hdma_dst;
 size_t   hdma_remaining_size;
 
 uint8_t readByte(uint16_t addr) {
-	if (addr<0x100 && !isBootROMUnmapped)
-		return bootrom[addr];
+	if (addr<0x100 && !isBootROMUnmapped && hardwareMode==MODE_DMG)
+		return bootrom_dmg[addr];
+	if (addr<0x900 && (addr >= 0x200 || addr < 0x100) &&
+			!isBootROMUnmapped && hardwareMode==MODE_GBC)
+		return bootrom_gbc[addr];
 	else if (addr<0x8000) // ROM
 		return mbc_read(addr);
 	else if (addr<0xA000) // VRAM
@@ -55,11 +58,8 @@ void writeByte(uint16_t addr, uint8_t val) {
 		gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70]&7)] = val;
 	else if (addr<0xFE00) // Same as C000-DDFF (ECHO)
 		writeByte(addr-0x2000, val);
-	if (addr==0xff50) {
+	if (addr==0xff50)
 		isBootROMUnmapped = true;
-		if (hardwareMode == MODE_GBC)
-			regs.A = 0x11; // GBC Mode
-	}
 	else if (addr==0xff02 && val==0x81) // Serial Data Transfer (Link Cable)
 		write(STDOUT_FILENO, mem+0xff01, 1);
 	else if (addr==0xff46) { // DMA Transfer
@@ -74,8 +74,6 @@ void writeByte(uint16_t addr, uint8_t val) {
 		counterTimerClocks = 0;
 	}
 	else if (addr==0xff69) { // GBC Background Palette Data
-		// if (val != 0xff)
-		// 	printf("pc=%04X val=%02X\n", PC, val);
 		int palette_index = mem[0xff68] & 0x3f;
 		bool auto_increment = mem[0xff68] >> 7;
 		gbc_backgr_palettes[palette_index] = val;

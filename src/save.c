@@ -1,7 +1,7 @@
 #include "emu.h"
 
 int gbmu_save_ext_ram() {
-	if (!ENABLE_SAVE_FILE)
+	if (!enable_save_file)
 		return 0;
 	if (!savefilename)
 		return (printf("Error saving game\n"));
@@ -18,7 +18,7 @@ int gbmu_save_ext_ram() {
 }
 
 int gbmu_load_ext_ram() {
-	if (!ENABLE_SAVE_FILE)
+	if (!enable_save_file)
 		return 0;
 	if (!savefilename)
 		return (printf("Error loading save\n"));
