@@ -102,3 +102,4 @@ char		*get_cartridge_type();
 int			get_cartridge_ram_size();
 void		set_mbc_type();
 void		hdma_transfer_continue();
+char		*disassemble_instr(uint16_t addr);
