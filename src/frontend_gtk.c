@@ -267,6 +267,9 @@ int main(int ac, char **av) {
 	g_timeout_add_full(G_PRIORITY_HIGH, 16, (GSourceFunc)timeout_cb, NULL, NULL);
 	update_buttons();
 	gtk_widget_show_all(window);
-	gtk_main();
-	gbmu_save_ext_ram();
+
+	gtk_main(); // Main loop
+
+	free(keyboard_state);
+	gbmu_quit();
 }

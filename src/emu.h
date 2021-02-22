@@ -80,6 +80,7 @@ char	*gbmu_debug_info();
 void	gbmu_update_debug_tiles_screen();
 int		gbmu_save_ext_ram();
 int		gbmu_load_ext_ram();
+void	gbmu_quit();
 
 // Internal
 uint8_t		readJoypadRegister();
