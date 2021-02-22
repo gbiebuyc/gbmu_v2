@@ -71,26 +71,35 @@ void gbmu_reset() {
 	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = 0;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
-	if (!screen_pixels)
-		screen_pixels = malloc(160 * 144 * 4);
-	if (!screen_debug_tiles_pixels)
-		screen_debug_tiles_pixels = malloc(SCREEN_DEBUG_TILES_W * SCREEN_DEBUG_TILES_H * 4);
+	if (!screen_pixels) {
+		if (!(screen_pixels = malloc(160 * 144 * 4)))
+			exit(printf("malloc error\n"));
+	}
+	if (!screen_debug_tiles_pixels) {
+		if (!(screen_debug_tiles_pixels = malloc(SCREEN_DEBUG_TILES_W * SCREEN_DEBUG_TILES_H * 4)))
+			exit(printf("malloc error\n"));
+	}
 	lcd_clear();
 	free(mem);
-	mem = calloc(1, 0x10000);
+	if (!(mem = calloc(1, 0x10000)))
+		exit(printf("malloc error\n"));
 	free(gbc_wram);
-	gbc_wram = calloc(1, 32*1024);
+	if (!(gbc_wram = calloc(1, 32*1024)))
+		exit(printf("malloc error\n"));
 	free(external_ram);
-	external_ram = calloc(1, 32*1024);
+	if (!(external_ram = calloc(1, 32*1024)))
+		exit(printf("malloc error\n"));
 	free(vram);
-	vram = calloc(1, 16*1024);
+	if (!(vram = calloc(1, 16*1024)))
+		exit(printf("malloc error\n"));
 }
 
 bool gbmu_load_rom(char *filename) {
 	FILE *file;
 	gbmu_reset();
 	free(gamerom);
-	gamerom = calloc(1, 8388608); // max 8 MB cartridges
+	if (!(gamerom = calloc(1, 8388608))) // max 8 MB cartridges
+		exit(printf("malloc error\n"));
 	if (!(file = fopen(filename, "rb")))
 		return false;
 	gamerom_size = 0;
