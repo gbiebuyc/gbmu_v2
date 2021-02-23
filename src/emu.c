@@ -58,15 +58,16 @@ void gbmu_reset() {
 		if (!(screen_debug_tiles_pixels = malloc(SCREEN_DEBUG_TILES_W * SCREEN_DEBUG_TILES_H * 4)))
 			exit(printf("malloc error\n"));
 	}
+	if (!external_ram) {
+		if (!(external_ram = calloc(1, 32*1024)))
+			exit(printf("malloc error\n"));
+	}
 	lcd_clear();
 	free(mem);
 	if (!(mem = calloc(1, 0x10000)))
 		exit(printf("malloc error\n"));
 	free(gbc_wram);
 	if (!(gbc_wram = calloc(1, 32*1024)))
-		exit(printf("malloc error\n"));
-	free(external_ram);
-	if (!(external_ram = calloc(1, 32*1024)))
 		exit(printf("malloc error\n"));
 	free(vram);
 	if (!(vram = calloc(1, 16*1024)))
