@@ -19,7 +19,6 @@ uint8_t readByte(uint16_t addr) {
 		return vram[addr-0x8000 + 0x2000*(mem[0xFF4F]&1)];
 	else if (addr<0xC000) // External RAM
 		return mbc_readExtRAM(addr);
-		// return external_ram[addr-0xA000 + 0x2000*externalRAMBankNumber];
 	else if (addr<0xD000) // Work RAM Bank 0
 		return mem[addr];
 	else if (addr<0xE000 && hardwareMode==MODE_DMG) // Work RAM Bank 1
@@ -32,8 +31,8 @@ uint8_t readByte(uint16_t addr) {
 		return readJoypadRegister();
 	else if (addr==0xff69) // GBC Background Palette Data
 		return gbc_backgr_palettes[mem[0xff68] & 0x3f];
-	else if (addr==0xff6b) // GBC Background Palette Data
-		return gbc_backgr_palettes[mem[0xff6a] & 0x3f];
+	else if (addr==0xff6b) // GBC Sprite Palette Data
+		return gbc_sprite_palettes[mem[0xff6a] & 0x3f];
 	else if (addr==0xff55) { // HDMA
 		if (!hdma_remaining_size)
 			return 0xFF;
