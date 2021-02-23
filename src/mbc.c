@@ -57,8 +57,11 @@ void writeByte(uint16_t addr, uint8_t val) {
 		gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70]&7)] = val;
 	else if (addr<0xFE00) // Same as C000-DDFF (ECHO)
 		writeByte(addr-0x2000, val);
-	if (addr==0xff50)
+	if (addr==0xff50) {
 		isBootROMUnmapped = true;
+		if (isDMG(gamerom[0x143]))
+			gameMode = MODE_DMG;
+	}
 	else if (addr==0xff02 && val==0x81) // Serial Data Transfer (Link Cable)
 		write(STDOUT_FILENO, mem+0xff01, 1);
 	else if (addr==0xff46) { // DMA Transfer

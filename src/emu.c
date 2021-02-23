@@ -35,7 +35,7 @@ bool isHalted, isStopped;
 bool debug;
 int ROMBankNumber, externalRAMBankNumber;
 int numROMBanks, extRAMSize;
-t_mode hardwareMode;
+t_mode hardwareMode, gameMode;
 int LY;
 bool doubleSpeed;
 bool zelda_fix;
@@ -47,6 +47,7 @@ bool enable_save_file = true;
 
 void gbmu_reset() {
 	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = 0;
+	gameMode = hardwareMode;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
 	if (!screen_pixels) {
@@ -88,10 +89,8 @@ bool gbmu_load_rom(char *filename) {
 	} else {
 		show_boot_animation = true;
 	}
-	if (gamerom[0x143] == MODE_DMG)
-		hardwareMode = MODE_DMG;
-	else
-		hardwareMode = MODE_GBC;
+	hardwareMode = isDMG(gamerom[0x143]) ? MODE_DMG : MODE_GBC;
+	gameMode = hardwareMode;
 	set_mbc_type(file ? gamerom[0x147] : 0);
 	zelda_fix = (strncmp(get_cartridge_title(), "ZELDA", 5) == 0);
 	free(savefilename);
@@ -136,7 +135,7 @@ bool gbmu_run_one_instr() {
 		fflush(stdout);
 	}
 
-	if (isStopped && hardwareMode == MODE_GBC && mem[0xFF4D] & 1) {
+	if (isStopped && gameMode == MODE_GBC && mem[0xFF4D] & 1) {
 		mem[0xFF4D] = 0x80;
 		doubleSpeed = true;
 		isStopped = false;

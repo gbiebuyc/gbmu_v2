@@ -10,7 +10,12 @@ char *gbmu_debug_info() {
 	b += sprintf(b, "ROM banks: %d\n", numROMBanks);
 	b += sprintf(b, "ROM size: %u bytes\n", ((unsigned)numROMBanks) * 0x4000);
 	b += sprintf(b, "RAM size: %d bytes\n", extRAMSize);
-	b += sprintf(b, "Emulating in %s mode\n", (hardwareMode==MODE_DMG) ? "DMG" : "GBC");
+	if (hardwareMode==MODE_DMG)
+		b += sprintf(b, "Emulating as DMG            \n");
+	else if (hardwareMode==MODE_GBC && gameMode==MODE_DMG)
+		b += sprintf(b, "Emulating as GBC in DMG mode\n");
+	else
+		b += sprintf(b, "Emulating as GBC            \n");
 	b += sprintf(b, "\n");
 	char flag_str[4];
 	flag_str[0] = (regs.F & 0x80) ? 'Z' : '-';

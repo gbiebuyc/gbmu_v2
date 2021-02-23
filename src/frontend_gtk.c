@@ -183,6 +183,7 @@ void btn_force_dmg_gbc_clicked() {
 		hardwareMode = MODE_GBC;
 	else if (hardwareMode == MODE_GBC)
 		hardwareMode = MODE_DMG;
+	gameMode = hardwareMode;
 	update_buttons();
 	refresh_screen();
 }

@@ -13,7 +13,7 @@ void gbmu_update_debug_tiles_screen() {
 						uint16_t pixels = ((uint16_t*)tile)[v];
 						uint32_t px = pixels >> (7-u);
 						px = (px>>7&2) | (px&1);
-						px = dmg_palette[px];
+						px = dmg_screen_palette[px];
 						int screenX = x*9 + u + bank*(SCREEN_DEBUG_TILES_W/2);
 						int screenY = y*9 + v;
 						screen_debug_tiles_pixels[screenY*SCREEN_DEBUG_TILES_W + screenX] = px;

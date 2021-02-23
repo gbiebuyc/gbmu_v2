@@ -41,3 +41,7 @@ void hdma_transfer_continue() {
 	hdma_dst += 16;
 	hdma_remaining_size -= 16;
 }
+
+bool isDMG(uint8_t val) {
+	return (val != 0x80) && (val != 0xC0);
+}
