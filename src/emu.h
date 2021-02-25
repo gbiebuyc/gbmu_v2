@@ -44,7 +44,6 @@ extern uint8_t gbc_backgr_palettes[8*4*2]; // 8 palettes of 4 colors of 2 bytes.
 extern uint8_t gbc_sprite_palettes[8*4*2];
 extern uint8_t *mem;
 extern uint8_t *gamerom;
-extern size_t   gamerom_size;
 extern uint8_t bootrom_dmg[];
 extern uint8_t bootrom_gbc[];
 extern uint8_t clocksTable[256]; // Duration of each cpu instruction.
@@ -67,10 +66,11 @@ extern int LY;
 extern bool doubleSpeed;
 extern uint8_t mbc1_banking_mode, mbc1_bank1_reg, mbc1_bank2_reg;
 extern bool mbc_ram_enable;
-extern char *savefilename;
+extern char *savefilename, *cartridgeTitle, *cartridgeTypeStr;
 extern uint16_t hdma_src, hdma_dst;
 extern size_t hdma_remaining_size;
 extern bool show_boot_animation, enable_save_file;
+extern bool cartridgeHasBattery;
 
 void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);
@@ -101,7 +101,8 @@ int			max(int a, int b);
 char		*get_cartridge_title();
 char		*get_cartridge_type();
 int			get_cartridge_ram_size();
-void		set_mbc_type(uint8_t type);
+bool		get_cartridge_has_battery();
+void		set_mbc_type();
 void		hdma_transfer_continue();
 char		*disassemble_instr(uint16_t addr);
 bool		isDMG(uint8_t val);

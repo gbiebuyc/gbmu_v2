@@ -59,7 +59,7 @@ void writeByte(uint16_t addr, uint8_t val) {
 		writeByte(addr-0x2000, val);
 	if (addr==0xff50) {
 		isBootROMUnmapped = true;
-		if (isDMG(gamerom[0x143]))
+		if (gamerom && isDMG(gamerom[0x143]))
 			gameMode = MODE_DMG;
 	}
 	else if (addr==0xff02 && val==0x81) // Serial Data Transfer (Link Cable)
@@ -130,6 +130,23 @@ uint16_t readWord(uint16_t addr) {
 void writeWord(uint16_t addr, uint16_t val) {
 	writeByte(addr, val);
 	writeByte(addr+1, val>>8);
+}
+
+/*
+ * No cartridge
+ */
+
+uint8_t noCartridge_read(uint16_t addr) {
+	return 0xFF;
+}
+
+void    noCartridge_write(uint16_t addr, uint8_t val) {
+}
+
+uint8_t noCartridge_readExtRAM(uint16_t addr) {
+}
+
+void    noCartridge_writeExtRAM(uint16_t addr, uint8_t val) {
 }
 
 /*
@@ -305,33 +322,41 @@ void    MBC5_writeExtRAM(uint16_t addr, uint8_t val) {
 	external_ram[addr-0xA000 + 0x2000*externalRAMBankNumber] = val;
 }
 
-void set_mbc_type(uint8_t type) {
+void set_mbc_type() {
+	if (!gamerom) {
+		mbc_read        = noCartridge_read;
+		mbc_readExtRAM  = noCartridge_readExtRAM;
+		mbc_write       = noCartridge_write;
+		mbc_writeExtRAM = noCartridge_writeExtRAM;
+		return;
+	}
+	uint8_t type = gamerom[0x147];
 	if (type>=1 && type<=3) {
 		printf("debug: MBC1\n");
-		mbc_read = MBC1_read;
-		mbc_readExtRAM = MBC1_readExtRAM;
-		mbc_write = MBC1_write;
+		mbc_read        = MBC1_read;
+		mbc_readExtRAM  = MBC1_readExtRAM;
+		mbc_write       = MBC1_write;
 		mbc_writeExtRAM = MBC1_writeExtRAM;
 	}
 	else if (type>=5 && type<=6) {
 		printf("debug: MBC2\n");
-		mbc_read = MBC2_read;
-		mbc_readExtRAM = MBC2_readExtRAM;
-		mbc_write = MBC2_write;
+		mbc_read        = MBC2_read;
+		mbc_readExtRAM  = MBC2_readExtRAM;
+		mbc_write       = MBC2_write;
 		mbc_writeExtRAM = MBC2_writeExtRAM;
 	}
 	else if (type>=0x0F && type<=0x13) {
 		printf("debug: MBC3\n");
-		mbc_read = MBC3_read;
-		mbc_readExtRAM = MBC3_readExtRAM;
-		mbc_write = MBC3_write;
+		mbc_read        = MBC3_read;
+		mbc_readExtRAM  = MBC3_readExtRAM;
+		mbc_write       = MBC3_write;
 		mbc_writeExtRAM = MBC3_writeExtRAM;
 	}
 	else if (type>=0x19 && type<=0x1E) {
 		printf("debug: MBC5\n");
-		mbc_read = MBC5_read;
-		mbc_readExtRAM = MBC5_readExtRAM;
-		mbc_write = MBC5_write;
+		mbc_read        = MBC5_read;
+		mbc_readExtRAM  = MBC5_readExtRAM;
+		mbc_write       = MBC5_write;
 		mbc_writeExtRAM = MBC5_writeExtRAM;
 	}
 	else {
@@ -339,9 +364,9 @@ void set_mbc_type(uint8_t type) {
 			printf("debug: rom only\n");
 		else
 			printf("Unsupported MBC chip: %s\n", get_cartridge_type());
-		mbc_read = ROMOnly_read;
-		mbc_readExtRAM = ROMOnly_readExtRAM;
-		mbc_write = ROMOnly_write;
+		mbc_read        = ROMOnly_read;
+		mbc_readExtRAM  = ROMOnly_readExtRAM;
+		mbc_write       = ROMOnly_write;
 		mbc_writeExtRAM = ROMOnly_writeExtRAM;
 	}
 }

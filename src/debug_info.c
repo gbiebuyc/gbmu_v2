@@ -1,12 +1,10 @@
 #include "emu.h"
 
 char *gbmu_debug_info() {
-	if (!gamerom)
-		return "No rom loaded";
 	static char buf[2000];
 	char *b = buf;
-	b += sprintf(b, "Title: %s\n", get_cartridge_title());
-	b += sprintf(b, "Type: %s\n", get_cartridge_type());
+	b += sprintf(b, "Title: %s\n", cartridgeTitle);
+	b += sprintf(b, "Type: %s\n", cartridgeTypeStr);
 	b += sprintf(b, "ROM banks: %d\n", numROMBanks);
 	b += sprintf(b, "ROM size: %u bytes\n", ((unsigned)numROMBanks) * 0x4000);
 	b += sprintf(b, "RAM size: %d bytes\n", extRAMSize);
@@ -108,4 +106,22 @@ int get_cartridge_ram_size() {
 		case 0x03: return 32 * 1024;
 	}
 	return 0;
+}
+
+bool get_cartridge_has_battery() {
+	switch (gamerom[0x147]) {
+		case 0x03:
+		case 0x06:
+		case 0x09:
+		case 0x0D:
+		case 0x0F:
+		case 0x10:
+		case 0x13:
+		case 0x17:
+		case 0x1B:
+		case 0x1E:
+		case 0xFF:
+			return true;
+	}
+	return false;
 }

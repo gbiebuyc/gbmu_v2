@@ -178,12 +178,11 @@ void drag_data_received(GtkWidget *widget, GdkDragContext *context, int x, int y
 }
 
 void btn_force_dmg_gbc_clicked() {
-	gbmu_reset();
 	if (hardwareMode == MODE_DMG)
 		hardwareMode = MODE_GBC;
 	else if (hardwareMode == MODE_GBC)
 		hardwareMode = MODE_DMG;
-	gameMode = hardwareMode;
+	gbmu_reset();
 	update_buttons();
 	refresh_screen();
 }
@@ -255,10 +254,10 @@ int main(int ac, char **av) {
 	txtbuf = gtk_text_view_get_buffer((GtkTextView*)txtview);
 	gtk_container_add(GTK_CONTAINER(hbox), txtview);
 
-	if (getenv("GBMU_DEBUG")) {
+	if (getenv("GBMU_SKIP_LOGO"))
 		show_boot_animation = false;
+	if (getenv("GBMU_SKIP_SAVE"))
 		enable_save_file = false;
-	}
 
 	load_rom(av[1]);
 

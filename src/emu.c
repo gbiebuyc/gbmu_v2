@@ -7,7 +7,6 @@ uint8_t *gbc_wram;
 uint8_t *vram;
 uint8_t *external_ram;
 uint8_t *gamerom;
-size_t   gamerom_size;
 uint8_t clocksTable[256] = { // Duration of each cpu instruction.
 	4,12,8,8,4,4,8,4,20,8,8,8,4,4,8,4,
 	4,12,8,8,4,4,8,4,12,8,8,8,4,4,8,4,
@@ -41,27 +40,16 @@ bool doubleSpeed;
 bool zelda_fix;
 uint8_t mbc1_banking_mode, mbc1_bank1_reg, mbc1_bank2_reg;
 bool mbc_ram_enable;
-char *savefilename;
+char *savefilename, *cartridgeTitle, *cartridgeTypeStr;
 bool show_boot_animation = true;
 bool enable_save_file = true;
+bool cartridgeHasBattery;
 
 void gbmu_reset() {
 	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = 0;
 	gameMode = hardwareMode;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
-	if (!screen_pixels) {
-		if (!(screen_pixels = malloc(160 * 144 * 4)))
-			exit(printf("malloc error\n"));
-	}
-	if (!screen_debug_tiles_pixels) {
-		if (!(screen_debug_tiles_pixels = malloc(SCREEN_DEBUG_TILES_W * SCREEN_DEBUG_TILES_H * 4)))
-			exit(printf("malloc error\n"));
-	}
-	if (!external_ram) {
-		if (!(external_ram = calloc(1, 32*1024)))
-			exit(printf("malloc error\n"));
-	}
 	lcd_clear();
 	free(mem);
 	if (!(mem = calloc(1, 0x10000)))
@@ -75,33 +63,45 @@ void gbmu_reset() {
 }
 
 bool gbmu_load_rom(char *filename) {
-	gbmu_reset();
-	free(gamerom);
-	if (!(gamerom = malloc(8*1024*1024))) // max 8 MB cartridges
+	if (external_ram)
+		gbmu_save_ext_ram();
+	if (!external_ram && !(external_ram = calloc(1, 32*1024)))
 		exit(printf("malloc error\n"));
-	memset(gamerom, 0xFF, 8*1024*1024);
+	if (!screen_pixels && !(screen_pixels = malloc(160 * 144 * 4)))
+		exit(printf("malloc error\n"));
+	if (!screen_debug_tiles_pixels && !(screen_debug_tiles_pixels = malloc(SCREEN_DEBUG_TILES_W * SCREEN_DEBUG_TILES_H * 4)))
+		exit(printf("malloc error\n"));
+	gbmu_reset();
+	free(gamerom); gamerom = NULL;
+	free(savefilename); savefilename = NULL;
+	set_mbc_type();
+	hardwareMode = MODE_GBC;
+	cartridgeTitle = cartridgeTypeStr = NULL;
+	numROMBanks = extRAMSize = zelda_fix = cartridgeHasBattery = 0;
 	FILE *file;
-	if ((file = fopen(filename, "rb"))) {
-		gamerom_size = 0;
-		while (fread(gamerom + gamerom_size, 1, 0x100, file) == 0x100)
-			if ((gamerom_size += 0x100) >= 8*1024*1024)
-				break;
-		fclose(file);
-	} else {
-		show_boot_animation = true;
+	if (!filename || !(file = fopen(filename, "rb"))) {
+		return false;
 	}
-	hardwareMode = isDMG(gamerom[0x143]) ? MODE_DMG : MODE_GBC;
-	gameMode = hardwareMode;
-	set_mbc_type(file ? gamerom[0x147] : 0);
-	zelda_fix = (strncmp(get_cartridge_title(), "ZELDA", 5) == 0);
-	free(savefilename);
+	if (!(gamerom = malloc(8*1024*1024))) { // max 8 MB cartridges
+		fclose(file); exit(printf("malloc error\n"));
+	}
+	int gamerom_size = 0;
+	while (fread(gamerom + gamerom_size, 1, 0x100, file) == 0x100)
+		if ((gamerom_size += 0x100) >= 8*1024*1024)
+			break;
+	fclose(file);
 	if (filename && (savefilename = malloc(strlen(filename) + 42))) {
 		strcpy(savefilename, filename);
 		strcat(savefilename, ".sav");
 	}
-	gbmu_load_ext_ram();
 	numROMBanks = (2 << min(8, gamerom[0x148]));
 	extRAMSize = get_cartridge_ram_size();
+	cartridgeTitle = get_cartridge_title();
+	cartridgeTypeStr = get_cartridge_type();
+	cartridgeHasBattery = get_cartridge_has_battery();
+	zelda_fix = (strncmp(cartridgeTitle, "ZELDA", 5) == 0);
+	set_mbc_type();
+	gbmu_load_ext_ram();
 	return true;
 }
 
@@ -114,6 +114,11 @@ void gbmu_run_one_frame() {
 
 bool gbmu_run_one_instr() {
 	bool isFrameReady = false;
+	if (!isBootROMUnmapped)
+		gameMode = hardwareMode;
+	if (!gamerom)
+		show_boot_animation = true;
+
 	// if (!debug && PC==0x01da)
 	// 	debug = true;
 	// if (PC==0x486e)
@@ -184,7 +189,7 @@ bool gbmu_run_one_instr() {
 	LCDSTAT &= ~3;
 	LCDSTAT |= lcd_mode;
 
-	if (old < 252 && scanlineClocks >= 252) { // H-Blank Interrupt
+	if (old < 252 && scanlineClocks >= 252 && LY < 144) { // H-Blank Interrupt
 		if (LCDSTAT & 0x08)
 			requestInterrupt(0x02);
 		hdma_transfer_continue();
