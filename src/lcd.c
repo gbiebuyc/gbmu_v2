@@ -5,10 +5,22 @@
 uint32_t dmg_screen_palette[] = {0xffffffff, 0xffaaaaaa, 0xff555555, 0xff000000};
 uint8_t gbc_backgr_palettes[8*4*2]; // 8 palettes of 4 colors of 2 bytes.
 uint8_t gbc_sprite_palettes[8*4*2];
+uint32_t *rgb15_to_rgb32;
 
 void lcd_clear() {
 	for (int i=0; i<160*144; i++)
 		screen_pixels[i] = dmg_screen_palette[0];
+}
+
+void init_colors() {
+	int i=0;
+	for (int b=0; b<32; b++) {
+		for (int g=0; g<32; g++) {
+			for (int r=0; r<32; r++) {
+				rgb15_to_rgb32[i++] = 0xff000000 | (b << 19) | (g << 11) | (r << 3);
+			}
+		}
+	}
 }
 
 void lcd_draw_scanline() {
@@ -73,10 +85,7 @@ void lcd_draw_scanline() {
 			px = dmg_screen_palette[px];
 		} else {
 			px = ((uint16_t*)gbc_backgr_palettes)[px];
-			uint8_t r = ((px >> 0 ) & 0x1f) * 256/32;
-			uint8_t g = ((px >> 5 ) & 0x1f) * 256/32;
-			uint8_t b = ((px >> 10) & 0x1f) * 256/32;
-			px = 0xff000000 | (b << 16) | (g << 8) | (r << 0);
+			px = rgb15_to_rgb32[px & 0x7FFF];
 		}
 		screen_pixels[LY*160 + screenX] = px;
 	}
@@ -141,10 +150,7 @@ void lcd_draw_scanline() {
 				px = dmg_screen_palette[px];
 			} else {
 				px = ((uint16_t*)gbc_sprite_palettes)[px];
-				uint8_t r = ((px >> 0 ) & 0x1f) * 256/32;
-				uint8_t g = ((px >> 5 ) & 0x1f) * 256/32;
-				uint8_t b = ((px >> 10) & 0x1f) * 256/32;
-				px = 0xff000000 | (b << 16) | (g << 8) | (r << 0);
+				px = rgb15_to_rgb32[px & 0x7FFF];
 			}
 			screen_pixels[LY*160 + screenX] = px;
 		}

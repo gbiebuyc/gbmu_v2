@@ -42,6 +42,7 @@ extern uint8_t *external_ram;
 extern uint32_t dmg_screen_palette[4];
 extern uint8_t gbc_backgr_palettes[8*4*2]; // 8 palettes of 4 colors of 2 bytes.
 extern uint8_t gbc_sprite_palettes[8*4*2];
+extern uint32_t *rgb15_to_rgb32;
 extern uint8_t *mem;
 extern uint8_t *gamerom;
 extern uint8_t bootrom_dmg[];
@@ -86,6 +87,7 @@ void	gbmu_quit();
 // Internal
 uint8_t		readJoypadRegister();
 void		lcd_clear();
+void		init_colors();
 void		lcd_draw_scanline();
 void		oam_search(int array[40]);
 uint8_t		readByte(uint16_t addr);

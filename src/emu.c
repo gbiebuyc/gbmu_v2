@@ -58,6 +58,9 @@ void gbmu_init() {
 		exit(printf("malloc error\n"));
 	if (!(vram = malloc(16*1024)))
 		exit(printf("malloc error\n"));
+	if (!(rgb15_to_rgb32 = malloc(sizeof(uint32_t) * (1 << 15))))
+		exit(printf("malloc error\n"));
+	init_colors();
 }
 
 bool gbmu_boot(char *filename) {
