@@ -72,8 +72,9 @@ extern size_t hdma_remaining_size;
 extern bool show_boot_animation, enable_save_file;
 extern bool cartridgeHasBattery;
 
+void	gbmu_init();
+bool	gbmu_boot(char *filepath);
 void	gbmu_reset();
-bool	gbmu_load_rom(char *filepath);
 bool	gbmu_run_one_instr();
 void	gbmu_run_one_frame();
 char	*gbmu_debug_info();

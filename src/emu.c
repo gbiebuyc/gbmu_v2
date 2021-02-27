@@ -45,32 +45,23 @@ bool show_boot_animation = true;
 bool enable_save_file = true;
 bool cartridgeHasBattery;
 
-void gbmu_reset() {
-	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = 0;
-	gameMode = hardwareMode;
-	memset(&regs, 0, sizeof(regs));
-	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
-	lcd_clear();
-	free(mem);
-	if (!(mem = calloc(1, 0x10000)))
+void gbmu_init() {
+	if (!(screen_pixels = malloc(160 * 144 * 4)))
 		exit(printf("malloc error\n"));
-	free(gbc_wram);
-	if (!(gbc_wram = calloc(1, 32*1024)))
+	if (!(screen_debug_tiles_pixels = malloc(SCREEN_DEBUG_TILES_W * SCREEN_DEBUG_TILES_H * 4)))
 		exit(printf("malloc error\n"));
-	free(vram);
-	if (!(vram = calloc(1, 16*1024)))
+	if (!(external_ram = calloc(1, 32*1024)))
+		exit(printf("malloc error\n"));
+	if (!(mem = malloc(0x10000)))
+		exit(printf("malloc error\n"));
+	if (!(gbc_wram = malloc(32*1024)))
+		exit(printf("malloc error\n"));
+	if (!(vram = malloc(16*1024)))
 		exit(printf("malloc error\n"));
 }
 
-bool gbmu_load_rom(char *filename) {
-	if (external_ram)
-		gbmu_save_ext_ram();
-	if (!external_ram && !(external_ram = calloc(1, 32*1024)))
-		exit(printf("malloc error\n"));
-	if (!screen_pixels && !(screen_pixels = malloc(160 * 144 * 4)))
-		exit(printf("malloc error\n"));
-	if (!screen_debug_tiles_pixels && !(screen_debug_tiles_pixels = malloc(SCREEN_DEBUG_TILES_W * SCREEN_DEBUG_TILES_H * 4)))
-		exit(printf("malloc error\n"));
+bool gbmu_boot(char *filename) {
+	gbmu_save_ext_ram();
 	gbmu_reset();
 	free(gamerom); gamerom = NULL;
 	free(savefilename); savefilename = NULL;
@@ -103,6 +94,17 @@ bool gbmu_load_rom(char *filename) {
 	set_mbc_type();
 	gbmu_load_ext_ram();
 	return true;
+}
+
+void gbmu_reset() {
+	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = 0;
+	gameMode = hardwareMode;
+	memset(&regs, 0, sizeof(regs));
+	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
+	lcd_clear();
+	memset(mem, 0, 0x10000);
+	memset(gbc_wram, 0, 32*1024);
+	memset(vram, 0, 16*1024);
 }
 
 void gbmu_run_one_frame() {

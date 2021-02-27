@@ -114,7 +114,7 @@ void update_buttons() {
 }
 
 void load_rom(char *filename) {
-	gbmu_load_rom(filename);
+	gbmu_boot(filename);
 	state = PLAY;
 	update_buttons();
 }
@@ -259,6 +259,7 @@ int main(int ac, char **av) {
 	if (getenv("GBMU_SKIP_SAVE"))
 		enable_save_file = false;
 
+	gbmu_init();
 	load_rom(av[1]);
 
 	g_timeout_add_full(G_PRIORITY_HIGH, 16, (GSourceFunc)timeout_cb, NULL, NULL);
