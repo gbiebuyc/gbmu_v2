@@ -1,5 +1,6 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include "emu.h"
 
 #define SCREEN_SCALE 2
@@ -263,7 +264,8 @@ int main(int ac, char **av) {
 	running = true;
 	while (running) {
 
-		clock_t time_end = clock() + 16 * CLOCKS_PER_SEC/1000;
+		struct timeval before_tv, after_tv;
+		gettimeofday(&before_tv, NULL);
 
 		while (gtk_events_pending())
 			gtk_main_iteration_do(false);
@@ -271,12 +273,14 @@ int main(int ac, char **av) {
 			update_input();
 			gbmu_run_one_frame();
 			refresh_screen();
-		} else {
-			usleep(16000);
 		}
 
-		while (clock() < time_end)
-			;
+		gettimeofday(&after_tv, NULL);
+		int64_t before_msec = ((int64_t)before_tv.tv_sec)*1000000 + before_tv.tv_usec;
+		int64_t after_msec = ((int64_t)after_tv.tv_sec)*1000000 + after_tv.tv_usec;
+		int64_t elapsed_time = after_msec - before_msec;
+		if (elapsed_time < 16000)
+			usleep(16000 - elapsed_time);
 	}
 
 	free(keyboard_state);
