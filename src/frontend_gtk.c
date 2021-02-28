@@ -18,13 +18,18 @@ GtkWidget *btn_reset;
 GtkWidget *btn_run_frame;
 GtkWidget *btn_run_instr;
 GtkWidget *btn_force_dmg_gbc;
+bool running;
+
+void my_quit() {
+	running = false;
+}
 
 bool key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
 	if (event->keyval < 0x10000)
 		keyboard_state[event->keyval] = TRUE;
 	if (event->keyval == GDK_KEY_Escape)
-		gtk_main_quit();
+		my_quit();
 	else if (event->keyval == GDK_KEY_Pause)
 		gtk_button_clicked((GtkButton*)btn_pause);
 	else if (event->keyval == GDK_KEY_F3) {
@@ -83,15 +88,6 @@ void update_input() {
 	gbmu_keys[GBMU_LEFT] = keyboard_state[GDK_KEY_q] || keyboard_state[GDK_KEY_a];
 	gbmu_keys[GBMU_DOWN] = keyboard_state[GDK_KEY_s];
 	gbmu_keys[GBMU_RIGHT] = keyboard_state[GDK_KEY_d];
-}
-
-bool timeout_cb(void *data) {
-	if (state == PLAY) {
-		update_input();
-		gbmu_run_one_frame();
-		refresh_screen();
-	}
-	return true;
 }
 
 void update_buttons() {
@@ -194,7 +190,7 @@ int main(int ac, char **av) {
 	gtk_init(&ac, &av);
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_position((GtkWindow*)window, GTK_WIN_POS_CENTER);
-	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(my_quit), NULL);
 	g_signal_connect(window, "key_press_event", G_CALLBACK(key_press_event), NULL);
 	g_signal_connect(window, "key_release_event", G_CALLBACK(key_release_event), NULL);
 	g_signal_connect(window, "drag_data_received", G_CALLBACK(drag_data_received), NULL);
@@ -261,11 +257,27 @@ int main(int ac, char **av) {
 
 	load_rom(av[1]);
 
-	g_timeout_add_full(G_PRIORITY_HIGH, 16, (GSourceFunc)timeout_cb, NULL, NULL);
 	update_buttons();
 	gtk_widget_show_all(window);
 
-	gtk_main(); // Main loop
+	running = true;
+	while (running) {
+
+		clock_t time_end = clock() + 16 * CLOCKS_PER_SEC/1000;
+
+		while (gtk_events_pending())
+			gtk_main_iteration_do(false);
+		if (state == PLAY) {
+			update_input();
+			gbmu_run_one_frame();
+			refresh_screen();
+		} else {
+			usleep(16000);
+		}
+
+		while (clock() < time_end)
+			;
+	}
 
 	free(keyboard_state);
 	gbmu_quit();
