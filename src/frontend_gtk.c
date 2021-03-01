@@ -21,16 +21,16 @@ GtkWidget *btn_run_instr;
 GtkWidget *btn_force_dmg_gbc;
 bool running;
 
-void my_quit() {
-	running = false;
-}
+// void my_quit() {
+// 	running = false;
+// }
 
 bool key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 {
 	if (event->keyval < 0x10000)
 		keyboard_state[event->keyval] = TRUE;
 	if (event->keyval == GDK_KEY_Escape)
-		my_quit();
+		gtk_main_quit();
 	else if (event->keyval == GDK_KEY_Pause)
 		gtk_button_clicked((GtkButton*)btn_pause);
 	else if (event->keyval == GDK_KEY_F3) {
@@ -57,6 +57,7 @@ bool key_release_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 }
 
 void refresh_screen() {
+	// puts("qsdf");
 	// Screen
 	GdkPixbuf *pixbuf = gdk_pixbuf_new_from_data(
 		(const guchar*)screen_pixels, GDK_COLORSPACE_RGB,
@@ -67,17 +68,17 @@ void refresh_screen() {
 	g_object_unref(pixbuf);
 	g_object_unref(pixbuf_scaled);
 	// Tiles debug
-	gbmu_update_debug_tiles_screen();
-	pixbuf = gdk_pixbuf_new_from_data(
-		(const guchar*)screen_debug_tiles_pixels, GDK_COLORSPACE_RGB,
-		true, 8, SCREEN_DEBUG_TILES_W, SCREEN_DEBUG_TILES_H, SCREEN_DEBUG_TILES_W*4, NULL, NULL);
-	pixbuf_scaled = gdk_pixbuf_scale_simple(
-		pixbuf, SCREEN_DEBUG_TILES_W * DEBUG_SCREEN_SCALE, SCREEN_DEBUG_TILES_H * DEBUG_SCREEN_SCALE, GDK_INTERP_NEAREST);
-	gtk_image_set_from_pixbuf((GtkImage*)image_debug, pixbuf_scaled);
-	g_object_unref(pixbuf);
-	g_object_unref(pixbuf_scaled);
-	// Debug text
-	gtk_text_buffer_set_text(txtbuf, gbmu_debug_info(), -1);
+	// gbmu_update_debug_tiles_screen();
+	// pixbuf = gdk_pixbuf_new_from_data(
+	// 	(const guchar*)screen_debug_tiles_pixels, GDK_COLORSPACE_RGB,
+	// 	true, 8, SCREEN_DEBUG_TILES_W, SCREEN_DEBUG_TILES_H, SCREEN_DEBUG_TILES_W*4, NULL, NULL);
+	// pixbuf_scaled = gdk_pixbuf_scale_simple(
+	// 	pixbuf, SCREEN_DEBUG_TILES_W * DEBUG_SCREEN_SCALE, SCREEN_DEBUG_TILES_H * DEBUG_SCREEN_SCALE, GDK_INTERP_NEAREST);
+	// gtk_image_set_from_pixbuf((GtkImage*)image_debug, pixbuf_scaled);
+	// g_object_unref(pixbuf);
+	// g_object_unref(pixbuf_scaled);
+	// // Debug text
+	// gtk_text_buffer_set_text(txtbuf, gbmu_debug_info(), -1);
 }
 
 void update_input() {
@@ -184,6 +185,21 @@ void btn_force_dmg_gbc_clicked() {
 	refresh_screen();
 }
 
+bool tick_cb(GtkWidget *widget, GdkFrameClock *frame_clock, gpointer user_data) {
+	// gtk_widget_queue_draw(image);
+	return G_SOURCE_CONTINUE;
+}
+
+void draw_cb() {
+
+		if (state == PLAY) {
+			update_input();
+			gbmu_run_one_frame();
+			refresh_screen();
+		}
+	gtk_widget_queue_draw(image);
+}
+
 
 int main(int ac, char **av) {
 	keyboard_state = calloc(0x10000, sizeof(bool));
@@ -191,7 +207,7 @@ int main(int ac, char **av) {
 	gtk_init(&ac, &av);
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_position((GtkWindow*)window, GTK_WIN_POS_CENTER);
-	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(my_quit), NULL);
+	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
 	g_signal_connect(window, "key_press_event", G_CALLBACK(key_press_event), NULL);
 	g_signal_connect(window, "key_release_event", G_CALLBACK(key_release_event), NULL);
 	g_signal_connect(window, "drag_data_received", G_CALLBACK(drag_data_received), NULL);
@@ -231,6 +247,9 @@ int main(int ac, char **av) {
 	gtk_container_add(GTK_CONTAINER(hbox), gtk_separator_new(0));
 
 	image = gtk_image_new();
+	// gtk_widget_add_tick_callback(image, (GtkTickCallback)tick_cb, 0, 0);
+	g_signal_connect (G_OBJECT (image), "draw",
+                    G_CALLBACK (draw_cb), NULL);
 	gtk_widget_set_size_request(image, 160*SCREEN_SCALE, 144*SCREEN_SCALE);
 	gtk_container_add(GTK_CONTAINER(hbox), image);
 	gtk_container_add(GTK_CONTAINER(hbox), gtk_separator_new(0));
@@ -261,27 +280,29 @@ int main(int ac, char **av) {
 	update_buttons();
 	gtk_widget_show_all(window);
 
-	running = true;
-	while (running) {
+	gtk_main();
 
-		struct timeval before_tv, after_tv;
-		gettimeofday(&before_tv, NULL);
+	// running = true;
+	// while (running) {
 
-		while (gtk_events_pending())
-			gtk_main_iteration_do(false);
-		if (state == PLAY) {
-			update_input();
-			gbmu_run_one_frame();
-			refresh_screen();
-		}
+	// 	struct timeval before_tv, after_tv;
+	// 	gettimeofday(&before_tv, NULL);
 
-		gettimeofday(&after_tv, NULL);
-		int64_t before_msec = ((int64_t)before_tv.tv_sec)*1000000 + before_tv.tv_usec;
-		int64_t after_msec = ((int64_t)after_tv.tv_sec)*1000000 + after_tv.tv_usec;
-		int64_t elapsed_time = after_msec - before_msec;
-		if (elapsed_time < 16000)
-			usleep(16000 - elapsed_time);
-	}
+	// 	while (gtk_events_pending())
+	// 		gtk_main_iteration_do(false);
+	// 	if (state == PLAY) {
+	// 		update_input();
+	// 		gbmu_run_one_frame();
+	// 		refresh_screen();
+	// 	}
+
+	// 	gettimeofday(&after_tv, NULL);
+	// 	int64_t before_msec = ((int64_t)before_tv.tv_sec)*1000000 + before_tv.tv_usec;
+	// 	int64_t after_msec = ((int64_t)after_tv.tv_sec)*1000000 + after_tv.tv_usec;
+	// 	int64_t elapsed_time = after_msec - before_msec;
+	// 	if (elapsed_time < 16000)
+	// 		usleep(16000 - elapsed_time);
+	// }
 
 	free(keyboard_state);
 	gbmu_quit();
