@@ -269,6 +269,10 @@ int main(int ac, char **av) {
 
 		while (gtk_events_pending())
 			gtk_main_iteration_do(false);
+
+		if (!running)
+			break;
+
 		if (state == PLAY) {
 			update_input();
 			gbmu_run_one_frame();
