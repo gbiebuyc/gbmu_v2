@@ -88,7 +88,7 @@ void lcd_draw_scanline() {
 	oam_search(sorted_sprite_indexes);
 	uint8_t *spriteAttrTable = mem+0xfe00;
 	bool isSpriteDisplayEnabled = LCDC&0x02;
-	for (int i=0; i<10; i++) {
+	for (int i=9; i>=0; i--) {
 		if (!isSpriteDisplayEnabled)
 			break;
 		uint8_t *sprite = spriteAttrTable + sorted_sprite_indexes[i]*4;
@@ -174,15 +174,12 @@ int sprite_compare(const void *a, const void *b) {
 	uint8_t x_b = sprite_b[1];
 	bool vis_b = sprite_is_visible(x_b, y_b);
 
-	if (vis_a && !vis_b)
-		return -1;
-	if (!vis_a && vis_b)
-		return 1;
-	if (gameMode==MODE_GBC && i_a != i_b)
-		return i_b - i_a;
-	if (x_a != x_b)
-		return x_b - x_a;
-	return i_b - i_a;
+	if (vis_a != vis_b)
+		return vis_a ? -1 : 1;
+	int x_diff = (int)x_a - x_b;
+	if (gameMode==MODE_DMG && x_diff && abs(x_diff) < 8)
+		return x_diff;
+	return i_a - i_b;
 }
 
 void oam_search(int array[40]) {
