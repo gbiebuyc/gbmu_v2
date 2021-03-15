@@ -13,6 +13,7 @@
 #define IE mem[0xffff]
 #define IF mem[0xff0f]
 #define LCDSTAT mem[0xff41]
+#define TAC mem[0xff07]
 #define SCREEN_DEBUG_TILES_W (32 * (8 + 1))
 #define SCREEN_DEBUG_TILES_H (24 * (8 + 1))
 
@@ -71,6 +72,9 @@ extern uint16_t hdma_src, hdma_dst;
 extern size_t hdma_remaining_size;
 extern bool show_boot_animation, enable_save_file;
 extern bool cartridgeHasBattery;
+extern uint16_t internal_div;
+extern bool TIMA_overflow;
+extern bool TIMA_loading;
 
 void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);
@@ -106,3 +110,5 @@ void		set_mbc_type();
 void		hdma_transfer_continue();
 char		*disassemble_instr(uint16_t addr);
 bool		isDMG(uint8_t val);
+void		check_timer_increase(uint16_t new_internal_div);
+void		set_internalDiv(uint16_t new_val);

@@ -6,6 +6,8 @@ uint8_t (*mbc_readExtRAM)(uint16_t addr);
 void    (*mbc_writeExtRAM)(uint16_t addr, uint8_t val);
 uint16_t hdma_src, hdma_dst;
 size_t   hdma_remaining_size;
+bool     TIMA_overflow;
+bool     TIMA_loading;
 
 uint8_t readByte(uint16_t addr) {
 	if (addr<0x100 && !isBootROMUnmapped && hardwareMode==MODE_DMG)
@@ -38,8 +40,37 @@ uint8_t readByte(uint16_t addr) {
 			return 0xFF;
 		return (hdma_remaining_size / 16) - 1;
 	}
+	else if (addr==0xFF04)
+		return internal_div >> 8;
 	else
 		return mem[addr];
+}
+
+bool get_fallingEdgeBit() {
+	// if (PC==0x168)
+	// 	printf("tima=%02X old=%04X internDiv=%04X\n", mem[0xff05], old_internal_div, internal_div);
+	if (!(TAC & 4))
+		return false;
+	switch (TAC & 3) {
+		case 0: return internal_div & (1 << 9);
+		case 1: return internal_div & (1 << 3);
+		case 2: return internal_div & (1 << 5);
+		case 3: return internal_div & (1 << 7);
+	}
+}
+
+void TIMA_increment() {
+	mem[0xff05]++;
+	if (mem[0xff05] == 0)
+		TIMA_overflow = true;
+}
+
+void set_internalDiv(uint16_t new_val) {
+	bool old_bit = get_fallingEdgeBit();
+	internal_div = new_val;
+	bool new_bit = get_fallingEdgeBit();
+	if (old_bit && !new_bit)
+		TIMA_increment();
 }
 
 void writeByte(uint16_t addr, uint8_t val) {
@@ -71,9 +102,25 @@ void writeByte(uint16_t addr, uint8_t val) {
 		// TODO: Transfer takes how many clocks?
 	}
 	else if (addr==0xff04) { // Divider Register
-		mem[0xff04] = 0;
-		divTimerClocks = 0;
-		counterTimerClocks = 0;
+		set_internalDiv(0);
+	}
+	else if (addr==0xff05) { // TIMA
+		if (TIMA_loading)
+			return;
+		mem[0xff05] = val;
+		TIMA_overflow = false;
+	}
+	else if (addr==0xff06) { // TMA
+		mem[0xff06] = val;
+		if (TIMA_loading)
+			mem[0xff05] = val;
+	}
+	else if (addr==0xff07) { // TAC
+		bool old_bit = get_fallingEdgeBit();
+		mem[0xff07] = val;
+		bool new_bit = get_fallingEdgeBit();
+		if (old_bit && !new_bit)
+			TIMA_increment();
 	}
 	else if (addr==0xff69) { // GBC Background Palette Data
 		int palette_index = mem[0xff68] & 0x3f;

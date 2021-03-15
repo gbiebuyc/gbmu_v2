@@ -44,9 +44,11 @@ char *savefilename, *cartridgeTitle, *cartridgeTypeStr;
 bool show_boot_animation = true;
 bool enable_save_file = true;
 bool cartridgeHasBattery;
+uint16_t internal_div;
+bool tima_reload;
 
 void gbmu_reset() {
-	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = 0;
+	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = internal_div = 0;
 	gameMode = hardwareMode;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
@@ -112,6 +114,57 @@ void gbmu_run_one_frame() {
 	}
 }
 
+void check_timer_increase(uint16_t new_internal_div) {
+	// if (PC==0x168)
+	// 	printf("tima=%02X old=%04X internDiv=%04X\n", mem[0xff05], old_internal_div, internal_div);
+	if (mem[0xff07] & 0b100) {
+		int TAC_Freq = mem[0xff07] & 0b11;
+		uint16_t bit;
+		switch (TAC_Freq) {
+			case 0: bit = (1 << 9); break;
+			case 1: bit = (1 << 3); break;
+			case 2: bit = (1 << 5); break;
+			case 3: bit = (1 << 7); break;
+		}
+		// Falling edge detector
+		if ((internal_div & bit) && !(new_internal_div & bit)) {
+			mem[0xff05]++;
+			if (mem[0xff05] == 0) {
+				mem[0xff05] = 0;
+				tima_reload = true;
+			}
+		}
+	}
+}
+
+int get_instr_timing() {
+	uint8_t opcode = readByte(PC);
+	int ret = clocksTable[opcode];
+	switch (opcode) {
+		case 0x20: if (!FLAG_Z) ret += 4; break;
+		case 0x28: if (FLAG_Z) ret += 4; break;
+		case 0x30: if (!FLAG_C) ret += 4; break;
+		case 0x38: if (FLAG_C) ret += 4; break;
+
+		case 0xC2: if (!FLAG_Z) ret += 4; break;
+		case 0xCA: if (FLAG_Z) ret += 4; break;
+		case 0xD2: if (!FLAG_C) ret += 4; break;
+		case 0xDA: if (FLAG_C) ret += 4; break;
+
+		case 0xC4: if (!FLAG_Z) ret += 12; break;
+		case 0xCC: if (FLAG_Z) ret += 12; break;
+		case 0xD4: if (!FLAG_C) ret += 12; break;
+		case 0xDC: if (FLAG_C) ret += 12; break;
+
+		case 0xCB: {
+			opcode = readByte(PC+1);
+			ret += ((opcode&7)==6) ? 16 : 8;
+			break;
+		}
+	}
+	return ret;
+}
+
 bool gbmu_run_one_instr() {
 	bool isFrameReady = false;
 	if (!isBootROMUnmapped)
@@ -119,27 +172,14 @@ bool gbmu_run_one_instr() {
 	if (!gamerom)
 		show_boot_animation = true;
 
-	// if (!debug && PC==0x01da)
-	// 	debug = true;
-	// if (PC==0x486e)
-	// 	exit(0);
-	if (debug) {
-		char flag_str[4];
-		flag_str[0] = (regs.F & 0x80) ? 'Z' : '-';
-		flag_str[1] = (regs.F & 0x40) ? 'N' : '-';
-		flag_str[2] = (regs.F & 0x20) ? 'H' : '-';
-		flag_str[3] = (regs.F & 0x10) ? 'C' : '-';
-		printf("PC=%04X AF=%04X BC=%04X DE=%04X HL=%04X SP=%04X %.4s Opcode=%02X %02X lcdc=%02X IE=%02X IF=%02X cnt=%02X IME=%d ",
-				PC, regs.AF, regs.BC, regs.DE, regs.HL, SP, flag_str, readByte(PC), readByte(PC+1), mem[0xFF40], IE, IF, mem[0xff05], IME);
-		// for (int i=0; i<4; i++) {
-		// 	printf("%04X ", ((uint16_t*)gbc_backgr_palettes)[i]);
-		// }
-		// for (int i=0; i<4; i++) {
-		// 	printf("%04X ", ((uint16_t*)gbc_sprite_palettes)[i]);
-		// }
-		printf("\n");
-		fflush(stdout);
-	}
+
+	// if (tima_reload) {
+	// 	// TIMA reload & interrupt is delayed by 4 clocks
+	// 	mem[0xff05] = mem[0xff06];
+	// 	if (!zelda_fix)
+	// 		requestInterrupt(0x04); // Timer Interrupt
+	// 	tima_reload = false;
+	// }
 
 	if (isStopped && gameMode == MODE_GBC && mem[0xFF4D] & 1) {
 		mem[0xFF4D] = 0x80;
@@ -150,6 +190,33 @@ bool gbmu_run_one_instr() {
 		isStopped = false;
 	if (isHalted && IE && IF)
 		isHalted = false;
+
+	// if (PC==0xc2ba)
+	// 	internal_div = 0xDC8288;
+	// if (!debug && PC==0x0100)
+	// 	debug = true;
+	// if (PC==0x486e)
+	// 	exit(0);
+	if (debug) {
+		char flag_str[4];
+		flag_str[0] = (regs.F & 0x80) ? 'Z' : '-';
+		flag_str[1] = (regs.F & 0x40) ? 'N' : '-';
+		flag_str[2] = (regs.F & 0x20) ? 'H' : '-';
+		flag_str[3] = (regs.F & 0x10) ? 'C' : '-';
+		printf("PC=%04X ", PC);
+		printf("%-10s ", disassemble_instr(PC));
+		printf("tima=%02X ", mem[0xff05]);
+		printf("internDiv=%04X ", internal_div/2);
+		printf("IF=%02X ", mem[0xff0f]);
+		printf("AF=%04X ", regs.AF);
+		printf("BC=%04X ", regs.BC);
+		printf("DE=%04X ", regs.DE);
+		printf("HL=%04X ", regs.HL);
+		printf("SP=%04X ", SP);
+		printf("%.4s ", flag_str);
+		printf("\n");
+		fflush(stdout);
+	}
 
 	if (isHalted || isStopped)
 		clocksIncrement = 4;
@@ -216,23 +283,16 @@ bool gbmu_run_one_instr() {
 	}
 
 	// Update timers
-	if ((divTimerClocks += clocksIncrement) >= 256) {
-		divTimerClocks -= 256;
-		mem[0xff04]++;
+	TIMA_loading = false;
+	if (TIMA_overflow) {
+		TIMA_overflow = false;
+		TIMA_loading = true;
+		mem[0xff05] = mem[0xff06];
+		if (!zelda_fix)
+			requestInterrupt(0x04); // Timer Interrupt
 	}
-
-	if (mem[0xff07] & 0b100) {
-		int threshold = (int[]){1024, 16, 64, 256}[mem[0xff07] & 0b11];
-		if ((counterTimerClocks += clocksIncrement) >= threshold) {
-			counterTimerClocks -= threshold;
-			mem[0xff05]++;
-			if (mem[0xff05] == 0) {
-				mem[0xff05] = mem[0xff06];
-				if (!zelda_fix)
-					requestInterrupt(0x04); // Timer Interrupt
-			}
-		}
-	}
+	// clocksIncrement = get_instr_timing();
+	set_internalDiv(internal_div + clocksIncrement);
 
 	// Execute interrupts
 	if (!isStopped && IME && IE && IF) {
