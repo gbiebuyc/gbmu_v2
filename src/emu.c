@@ -7,24 +7,6 @@ uint8_t *gbc_wram;
 uint8_t *vram;
 uint8_t *external_ram;
 uint8_t *gamerom;
-uint8_t clocksTable[256] = { // Duration of each cpu instruction.
-	4,12,8,8,4,4,8,4,20,8,8,8,4,4,8,4,
-	4,12,8,8,4,4,8,4,12,8,8,8,4,4,8,4,
-	8,12,8,8,4,4,8,4,8,8,8,8,4,4,8,4,
-	8,12,8,8,12,12,12,4,8,8,8,8,4,4,8,4,
-	4,4,4,4,4,4,8,4,4,4,4,4,4,4,8,4,
-	4,4,4,4,4,4,8,4,4,4,4,4,4,4,8,4,
-	4,4,4,4,4,4,8,4,4,4,4,4,4,4,8,4,
-	8,8,8,8,8,8,4,8,4,4,4,4,4,4,8,4,
-	4,4,4,4,4,4,8,4,4,4,4,4,4,4,8,4,
-	4,4,4,4,4,4,8,4,4,4,4,4,4,4,8,4,
-	4,4,4,4,4,4,8,4,4,4,4,4,4,4,8,4,
-	4,4,4,4,4,4,8,4,4,4,4,4,4,4,8,4,
-	8,12,12,16,12,16,8,16,8,16,12,4,12,24,8,16,
-	8,12,12,0,12,16,8,16,8,16,12,0,12,0,8,16,
-	12,12,8,0,0,16,8,16,16,4,16,0,0,0,8,16,
-	12,12,8,4,0,16,8,16,12,8,16,4,0,0,8,16
-};
 uint16_t PC, SP;
 t_regs regs;
 int scanlineClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
@@ -119,7 +101,7 @@ bool gbmu_run_one_instr() {
 	if (!gamerom)
 		show_boot_animation = true;
 
-	// if (!debug && PC==0x01da)
+	// if (!debug && PC==0x0100)
 	// 	debug = true;
 	// if (PC==0x486e)
 	// 	exit(0);
@@ -129,14 +111,14 @@ bool gbmu_run_one_instr() {
 		flag_str[1] = (regs.F & 0x40) ? 'N' : '-';
 		flag_str[2] = (regs.F & 0x20) ? 'H' : '-';
 		flag_str[3] = (regs.F & 0x10) ? 'C' : '-';
-		printf("PC=%04X AF=%04X BC=%04X DE=%04X HL=%04X SP=%04X %.4s Opcode=%02X %02X lcdc=%02X IE=%02X IF=%02X cnt=%02X IME=%d ",
-				PC, regs.AF, regs.BC, regs.DE, regs.HL, SP, flag_str, readByte(PC), readByte(PC+1), mem[0xFF40], IE, IF, mem[0xff05], IME);
-		// for (int i=0; i<4; i++) {
-		// 	printf("%04X ", ((uint16_t*)gbc_backgr_palettes)[i]);
-		// }
-		// for (int i=0; i<4; i++) {
-		// 	printf("%04X ", ((uint16_t*)gbc_sprite_palettes)[i]);
-		// }
+		printf("PC=%04X ", PC);
+		printf("%-10s ", disassemble_instr(PC));
+		printf("AF=%04X ", regs.AF);
+		printf("BC=%04X ", regs.BC);
+		printf("DE=%04X ", regs.DE);
+		printf("HL=%04X ", regs.HL);
+		printf("SP=%04X ", SP);
+		printf("%.4s ", flag_str);
 		printf("\n");
 		fflush(stdout);
 	}
@@ -155,7 +137,7 @@ bool gbmu_run_one_instr() {
 		clocksIncrement = 4;
 	else {
 		uint8_t opcode = fetchByte(); // Fetch opcode
-		clocksIncrement = clocksTable[opcode];
+		clocksIncrement = cycleTable[opcode] * 4;
 		if (!instrs[opcode])
 			exit(printf("Invalid opcode: %#x, PC=%04X\n", opcode, PC));
 		instrs[opcode]();             // Execute
@@ -223,7 +205,8 @@ bool gbmu_run_one_instr() {
 
 	if (mem[0xff07] & 0b100) {
 		int threshold = (int[]){1024, 16, 64, 256}[mem[0xff07] & 0b11];
-		if ((counterTimerClocks += clocksIncrement) >= threshold) {
+		counterTimerClocks += clocksIncrement;
+		while (counterTimerClocks >= threshold) {
 			counterTimerClocks -= threshold;
 			mem[0xff05]++;
 			if (mem[0xff05] == 0) {

@@ -46,7 +46,7 @@ extern uint8_t *mem;
 extern uint8_t *gamerom;
 extern uint8_t bootrom_dmg[];
 extern uint8_t bootrom_gbc[];
-extern uint8_t clocksTable[256]; // Duration of each cpu instruction.
+extern uint8_t cycleTable[512]; // Duration of each cpu instruction.
 extern uint16_t PC, SP;
 typedef union {
 	struct { uint16_t AF, BC, DE, HL; };

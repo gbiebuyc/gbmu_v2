@@ -318,10 +318,10 @@ void insCE() { addc(fetchByte()); }
 void insDE() { subc(fetchByte()); }
 void insEE() { xor(fetchByte()); }
 void insFE() { compare(fetchByte()); }
-void insC0() { if (!FLAG_Z) PC=pop(); }
-void insC8() { if (FLAG_Z) PC=pop(); }
-void insD0() { if (!FLAG_C) PC=pop(); }
-void insD8() { if (FLAG_C) PC=pop(); }
+void insC0() { if (!FLAG_Z) {PC=pop(); clocksIncrement+=12;} }
+void insC8() { if (FLAG_Z) {PC=pop(); clocksIncrement+=12;} }
+void insD0() { if (!FLAG_C) {PC=pop(); clocksIncrement+=12;} }
+void insD8() { if (FLAG_C) {PC=pop(); clocksIncrement+=12;} }
 void insC9() { PC=pop(); }
 void insD9() { PC=pop(); IME=1; }
 void insC5() { push(regs.BC); }
@@ -368,7 +368,12 @@ void insEA() { writeByte(fetchWord(), regs.A); }
 void insFA() { regs.A = readByte(fetchWord()); }
 void insE9() { PC = regs.HL; }
 void ins10() { isStopped = true; uint8_t ignored = fetchByte(); }
-void insCB();
+void insCB() {
+	int op = fetchByte();
+	clocksIncrement = cycleTable[op+256] * 4;
+	instrs[op+256]();
+}
+
 void cb00() { regs.B = rotate(regs.B, "RLC "); }
 void cb01() { regs.C = rotate(regs.C, "RLC "); }
 void cb02() { regs.D = rotate(regs.D, "RLC "); }
@@ -660,9 +665,3 @@ void (*instrs[512])(void) = {
 	cbE0, cbE1, cbE2, cbE3, cbE4, cbE5, cbE6, cbE7, cbE8, cbE9, cbEA, cbEB, cbEC, cbED, cbEE, cbEF,
 	cbF0, cbF1, cbF2, cbF3, cbF4, cbF5, cbF6, cbF7, cbF8, cbF9, cbFA, cbFB, cbFC, cbFD, cbFE, cbFF,
 };
-
-void insCB() {
-	uint8_t op = fetchByte();
-	clocksIncrement += ((op&7)==6) ? 16 : 8;
-	instrs[op+256]();
-}
