@@ -101,6 +101,24 @@ bool gbmu_run_one_instr() {
 	if (!gamerom)
 		show_boot_animation = true;
 
+	clocksIncrement = 0;
+
+	// Execute interrupts
+	if (!isStopped && IME && IE && IF) {
+		for (int i=0; i<5; i++) {
+			int interrupt_vector = 0x40 + 8*i;
+			int mask = 1<<i;
+			if (IE & IF & mask) {
+				push(PC);
+				PC = interrupt_vector;
+				IF &= ~mask;
+				IME = 0;
+				clocksIncrement += 5*4; // +5 cycles (see TCAGBD.pdf)
+				break;
+			}
+		}
+	}
+
 	// if (!debug && PC==0x0100)
 	// 	debug = true;
 	// if (PC==0x486e)
@@ -119,6 +137,8 @@ bool gbmu_run_one_instr() {
 		printf("HL=%04X ", regs.HL);
 		printf("SP=%04X ", SP);
 		printf("%.4s ", flag_str);
+		printf("ff26=%02X ", readByte(0xff26));
+		printf("spd=%d ", doubleSpeed);
 		printf("\n");
 		fflush(stdout);
 	}
@@ -134,10 +154,10 @@ bool gbmu_run_one_instr() {
 		isHalted = false;
 
 	if (isHalted || isStopped)
-		clocksIncrement = 4;
+		clocksIncrement += 4;
 	else {
 		uint8_t opcode = fetchByte(); // Fetch opcode
-		clocksIncrement = cycleTable[opcode] * 4;
+		clocksIncrement += cycleTable[opcode] * 4;
 		if (!instrs[opcode])
 			exit(printf("Invalid opcode: %#x, PC=%04X\n", opcode, PC));
 		instrs[opcode]();             // Execute
@@ -217,19 +237,7 @@ bool gbmu_run_one_instr() {
 		}
 	}
 
-	// Execute interrupts
-	if (!isStopped && IME && IE && IF) {
-		for (int i=0; i<5; i++) {
-			int interrupt_vector = 0x40 + 8*i;
-			int mask = 1<<i;
-			if (IE & IF & mask) {
-				push(PC);
-				PC = interrupt_vector;
-				IF &= ~mask;
-				IME = 0;
-				break;
-			}
-		}
-	}
+	snd_update();
+
 	return isFrameReady;
 }

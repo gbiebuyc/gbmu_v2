@@ -106,3 +106,6 @@ void		set_mbc_type();
 void		hdma_transfer_continue();
 char		*disassemble_instr(uint16_t addr);
 bool		isDMG(uint8_t val);
+void		snd_update();
+uint8_t		snd_readRegister(uint16_t addr);
+void		snd_writeRegister(uint16_t addr, uint8_t val);

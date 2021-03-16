@@ -27,6 +27,8 @@ uint8_t readByte(uint16_t addr) {
 		return gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70]&7)];
 	else if (addr<0xFE00) // Same as C000-DDFF (ECHO)
 		return readByte(addr-0x2000);
+	else if (addr>=0xFF10 && addr<=0xFF26)
+		return snd_readRegister(addr);
 	else if (addr==0xff00)
 		return readJoypadRegister();
 	else if (addr==0xff69) // GBC Background Palette Data
@@ -57,6 +59,8 @@ void writeByte(uint16_t addr, uint8_t val) {
 		gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70]&7)] = val;
 	else if (addr<0xFE00) // Same as C000-DDFF (ECHO)
 		writeByte(addr-0x2000, val);
+	else if (addr>=0xFF10 && addr<=0xFF26)
+		snd_writeRegister(addr, val);
 	if (addr==0xff50) {
 		isBootROMUnmapped = true;
 		if (gamerom && isDMG(gamerom[0x143]))

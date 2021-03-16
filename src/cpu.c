@@ -370,7 +370,7 @@ void insE9() { PC = regs.HL; }
 void ins10() { isStopped = true; uint8_t ignored = fetchByte(); }
 void insCB() {
 	int op = fetchByte();
-	clocksIncrement = cycleTable[op+256] * 4;
+	clocksIncrement += 4 * (cycleTable[op+256] - cycleTable[0xCB]);
 	instrs[op+256]();
 }
 
