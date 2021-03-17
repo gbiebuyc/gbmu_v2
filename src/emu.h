@@ -39,6 +39,13 @@ typedef union {
 	struct { uint8_t F, A, C, B, E, D, L, H; };
 } t_regs;
 
+typedef enum {
+	NORMAL,
+	HALT,
+	HALT_BUG,
+	STOP,
+} t_cpuState;
+
 extern bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
 extern uint32_t *screen_pixels, *screen_debug_tiles_pixels;
 extern uint8_t *gbc_wram;
@@ -57,7 +64,6 @@ extern t_regs regs;
 extern int scanlineClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
 extern bool IME;
 extern bool isBootROMUnmapped;
-extern bool isHalted, isStopped;
 extern int ROMBankNumber, externalRAMBankNumber;
 extern int numROMBanks, extRAMSize;
 extern void (*instrs[512])(void);
@@ -71,6 +77,7 @@ extern size_t hdma_remaining_size;
 extern bool show_boot_animation, enable_save_file;
 extern bool cartridgeHasBattery;
 extern bool isFrameReady;
+extern t_cpuState cpuState;
 
 void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);

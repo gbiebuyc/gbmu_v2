@@ -27,7 +27,7 @@ int max(int a, int b) {
 
 void requestInterrupt(uint8_t interrupt) {
 	IF |= interrupt;
-	isHalted = false;
+	cpuState = NORMAL;
 }
 
 void hdma_transfer_continue() {

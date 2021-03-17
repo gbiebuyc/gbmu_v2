@@ -212,7 +212,7 @@ void ins72() { writeByte(regs.HL, regs.D); }
 void ins73() { writeByte(regs.HL, regs.E); }
 void ins74() { writeByte(regs.HL, regs.H); }
 void ins75() { writeByte(regs.HL, regs.L); }
-void ins76() { isHalted = true; }
+void ins76() { cpuState = (IME==0 && (IE & IF & 0x1F)) ? HALT_BUG : HALT; }
 void ins77() { writeByte(regs.HL, regs.A); }
 void ins48() { regs.C = regs.B; }
 void ins49() { regs.C = regs.C; }
@@ -367,7 +367,7 @@ void insF9() { SP = regs.HL; }
 void insEA() { writeByte(fetchWord(), regs.A); }
 void insFA() { regs.A = readByte(fetchWord()); }
 void insE9() { PC = regs.HL; }
-void ins10() { isStopped = true; uint8_t ignored = fetchByte(); }
+void ins10() { cpuState = STOP; uint8_t ignored = fetchByte(); }
 void insCB() {
 	int op = fetchByte();
 	clocksIncrement += 4 * (cycleTable[op+256] - cycleTable[0xCB]);

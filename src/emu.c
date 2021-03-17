@@ -12,7 +12,6 @@ t_regs regs;
 int scanlineClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
 bool IME;
 bool isBootROMUnmapped;
-bool isHalted, isStopped;
 int ROMBankNumber, externalRAMBankNumber;
 int numROMBanks, extRAMSize;
 t_mode hardwareMode, gameMode;
@@ -24,9 +23,10 @@ char *savefilename, *cartridgeTitle, *cartridgeTypeStr;
 bool show_boot_animation = true;
 bool enable_save_file = true;
 bool cartridgeHasBattery;
+t_cpuState cpuState;
 
 void gbmu_reset() {
-	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = isHalted = isStopped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = 0;
+	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = cpuState = 0;
 	gameMode = hardwareMode;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
@@ -98,20 +98,21 @@ void gbmu_run_one_instr() {
 	if (!gamerom)
 		show_boot_animation = true;
 
-	if (isStopped && gameMode == MODE_GBC && mem[0xFF4D] & 1) {
+	clocksIncrement = 0;
+	IF |= 0b11100000;
+
+	if (cpuState==STOP && gameMode == MODE_GBC && mem[0xFF4D] & 1) {
 		mem[0xFF4D] = 0x80;
 		doubleSpeed = true;
-		isStopped = false;
+		cpuState = NORMAL;
 	}
-	if (isStopped && ((readJoypadRegister() & 0xF) != 0xF))
-		isStopped = false;
-	if (isHalted && IE && IF)
-		isHalted = false;
-
-	clocksIncrement = 0;
+	if (cpuState==STOP && ((readJoypadRegister() & 0xF) != 0xF))
+		cpuState = NORMAL;
+	if (cpuState==HALT && (IE & IF & 0x1F))
+		cpuState = NORMAL;
 
 	// Execute interrupts
-	if (!isStopped && IME && IE && IF) {
+	if (cpuState==NORMAL && IME && (IE & IF & 0x1F)) {
 		for (int i=0; i<5; i++) {
 			int interrupt_vector = 0x40 + 8*i;
 			int mask = 1<<i;
@@ -129,10 +130,18 @@ void gbmu_run_one_instr() {
 	debug_trace();
 
 	uint8_t opcode;
-	if (isHalted || isStopped) {
-		opcode = 0; // NOP
-	} else {
-		opcode = fetchByte(); // Fetch opcode
+	switch (cpuState) {
+		case NORMAL:
+			opcode = fetchByte();
+			break;
+		case HALT_BUG:
+			opcode = readByte(PC);
+			cpuState = NORMAL;
+			break;
+		case HALT:
+		case STOP:
+			opcode = 0; // NOP
+			break;
 	}
 	if (!instrs[opcode])
 		exit(printf("Invalid opcode: %#x, PC=%04X\n", opcode, PC));
