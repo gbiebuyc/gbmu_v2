@@ -13,11 +13,9 @@ int scanlineClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
 bool IME;
 bool isBootROMUnmapped;
 bool isHalted, isStopped;
-bool debug;
 int ROMBankNumber, externalRAMBankNumber;
 int numROMBanks, extRAMSize;
 t_mode hardwareMode, gameMode;
-int LY;
 bool doubleSpeed;
 bool zelda_fix;
 uint8_t mbc1_banking_mode, mbc1_bank1_reg, mbc1_bank2_reg;
@@ -88,18 +86,27 @@ bool gbmu_load_rom(char *filename) {
 }
 
 void gbmu_run_one_frame() {
-	bool isFrameReady = false;
+	isFrameReady = false;
 	while (!isFrameReady) {
-		isFrameReady = gbmu_run_one_instr();
+		gbmu_run_one_instr();
 	}
 }
 
-bool gbmu_run_one_instr() {
-	bool isFrameReady = false;
+void gbmu_run_one_instr() {
 	if (!isBootROMUnmapped)
 		gameMode = hardwareMode;
 	if (!gamerom)
 		show_boot_animation = true;
+
+	if (isStopped && gameMode == MODE_GBC && mem[0xFF4D] & 1) {
+		mem[0xFF4D] = 0x80;
+		doubleSpeed = true;
+		isStopped = false;
+	}
+	if (isStopped && ((readJoypadRegister() & 0xF) != 0xF))
+		isStopped = false;
+	if (isHalted && IE && IF)
+		isHalted = false;
 
 	clocksIncrement = 0;
 
@@ -119,103 +126,18 @@ bool gbmu_run_one_instr() {
 		}
 	}
 
-	// if (!debug && PC==0x0100)
-	// 	debug = true;
-	// if (PC==0x486e)
-	// 	exit(0);
-	if (debug) {
-		char flag_str[4];
-		flag_str[0] = (regs.F & 0x80) ? 'Z' : '-';
-		flag_str[1] = (regs.F & 0x40) ? 'N' : '-';
-		flag_str[2] = (regs.F & 0x20) ? 'H' : '-';
-		flag_str[3] = (regs.F & 0x10) ? 'C' : '-';
-		printf("PC=%04X ", PC);
-		printf("%-10s ", disassemble_instr(PC));
-		printf("AF=%04X ", regs.AF);
-		printf("BC=%04X ", regs.BC);
-		printf("DE=%04X ", regs.DE);
-		printf("HL=%04X ", regs.HL);
-		printf("SP=%04X ", SP);
-		printf("%.4s ", flag_str);
-		printf("ff26=%02X ", readByte(0xff26));
-		printf("spd=%d ", doubleSpeed);
-		printf("\n");
-		fflush(stdout);
-	}
+	debug_trace();
 
-	if (isStopped && gameMode == MODE_GBC && mem[0xFF4D] & 1) {
-		mem[0xFF4D] = 0x80;
-		doubleSpeed = true;
-		isStopped = false;
+	uint8_t opcode;
+	if (isHalted || isStopped) {
+		opcode = 0; // NOP
+	} else {
+		opcode = fetchByte(); // Fetch opcode
 	}
-	if (isStopped && ((readJoypadRegister() & 0xF) != 0xF))
-		isStopped = false;
-	if (isHalted && IE && IF)
-		isHalted = false;
-
-	if (isHalted || isStopped)
-		clocksIncrement += 4;
-	else {
-		uint8_t opcode = fetchByte(); // Fetch opcode
-		clocksIncrement += cycleTable[opcode] * 4;
-		if (!instrs[opcode])
-			exit(printf("Invalid opcode: %#x, PC=%04X\n", opcode, PC));
-		instrs[opcode]();             // Execute
-	}
-
-	bool coincidenceFlag = false;
-	bool isDisplayEnabled = mem[0xff40] & 0x80;
-	int scanlineClockThreshold = doubleSpeed ? 912 : 456;
-	int old = scanlineClocks;
-	if ((scanlineClocks += clocksIncrement) >= scanlineClockThreshold) {
-		scanlineClocks -= scanlineClockThreshold;
-		mem[0xff44]++;
-		if (mem[0xff44] > 153)
-			mem[0xff44] = 0;
-		LY = mem[0xff44];
-		int LYC = mem[0xff45];
-		coincidenceFlag = LY==LYC;
-		LCDSTAT = coincidenceFlag ? (LCDSTAT|4) : (LCDSTAT&~4);
-	}
-
-	// Set LCD mode flag
-	int lcd_mode;
-	if (LY >= 144)
-		lcd_mode = 1;
-	else if (scanlineClocks >= 252)
-		lcd_mode = 0;
-	else if (scanlineClocks >= 80)
-		lcd_mode = 3;
-	else
-		lcd_mode = 2;
-	LCDSTAT &= ~3;
-	LCDSTAT |= lcd_mode;
-
-	if (old < 252 && scanlineClocks >= 252 && LY < 144) { // H-Blank Interrupt
-		if (LCDSTAT & 0x08)
-			requestInterrupt(0x02);
-		hdma_transfer_continue();
-	}
-	if (scanlineClocks < old && LY == 144) { // V-Blank Interrupt
-		if (LCDSTAT & 0x10)
-			requestInterrupt(0x02);
-		if (isDisplayEnabled)
-			requestInterrupt(0x01);
-		if (show_boot_animation || isBootROMUnmapped) {
-			if (!isDisplayEnabled)
-				lcd_clear();
-			isFrameReady = true;
-		}
-	}
-	if (scanlineClocks < old && LY < 144) { // OAM Interrupt
-		if (LCDSTAT & 0x20)
-			requestInterrupt(0x02);
-		lcd_draw_scanline();
-	}
-	if (scanlineClocks < old && coincidenceFlag) { // Coincidence Interrupt
-		if (LCDSTAT & 0x40)
-			requestInterrupt(0x02);
-	}
+	if (!instrs[opcode])
+		exit(printf("Invalid opcode: %#x, PC=%04X\n", opcode, PC));
+	clocksIncrement += cycleTable[opcode] * 4;
+	instrs[opcode](); // Execute
 
 	// Update timers
 	if ((divTimerClocks += clocksIncrement) >= 256) {
@@ -239,5 +161,5 @@ bool gbmu_run_one_instr() {
 
 	snd_update();
 
-	return isFrameReady;
+	lcd_update();
 }

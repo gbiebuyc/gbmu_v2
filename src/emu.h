@@ -34,6 +34,11 @@ typedef enum {
 	MODE_DMG_OR_GBC = 0x80,
 } t_mode;
 
+typedef union {
+	struct { uint16_t AF, BC, DE, HL; };
+	struct { uint8_t F, A, C, B, E, D, L, H; };
+} t_regs;
+
 extern bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
 extern uint32_t *screen_pixels, *screen_debug_tiles_pixels;
 extern uint8_t *gbc_wram;
@@ -48,21 +53,15 @@ extern uint8_t bootrom_dmg[];
 extern uint8_t bootrom_gbc[];
 extern uint8_t cycleTable[512]; // Duration of each cpu instruction.
 extern uint16_t PC, SP;
-typedef union {
-	struct { uint16_t AF, BC, DE, HL; };
-	struct { uint8_t F, A, C, B, E, D, L, H; };
-} t_regs;
 extern t_regs regs;
 extern int scanlineClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
 extern bool IME;
 extern bool isBootROMUnmapped;
 extern bool isHalted, isStopped;
-extern bool debug;
 extern int ROMBankNumber, externalRAMBankNumber;
 extern int numROMBanks, extRAMSize;
 extern void (*instrs[512])(void);
 extern t_mode hardwareMode, gameMode;
-extern int LY;
 extern bool doubleSpeed;
 extern uint8_t mbc1_banking_mode, mbc1_bank1_reg, mbc1_bank2_reg;
 extern bool mbc_ram_enable;
@@ -71,10 +70,11 @@ extern uint16_t hdma_src, hdma_dst;
 extern size_t hdma_remaining_size;
 extern bool show_boot_animation, enable_save_file;
 extern bool cartridgeHasBattery;
+extern bool isFrameReady;
 
 void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);
-bool	gbmu_run_one_instr();
+void	gbmu_run_one_instr();
 void	gbmu_run_one_frame();
 char	*gbmu_debug_info();
 void	gbmu_update_debug_tiles_screen();
@@ -84,6 +84,7 @@ void	gbmu_quit();
 
 // Internal
 uint8_t		readJoypadRegister();
+void		lcd_update();
 void		lcd_clear();
 void		lcd_draw_scanline();
 void		oam_search(int array[40]);
@@ -109,3 +110,4 @@ bool		isDMG(uint8_t val);
 void		snd_update();
 uint8_t		snd_readRegister(uint16_t addr);
 void		snd_writeRegister(uint16_t addr, uint8_t val);
+void		debug_trace();

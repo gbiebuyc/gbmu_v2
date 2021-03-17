@@ -1,10 +1,67 @@
 #include "emu.h"
 
-#define LCDC mem[0xff40]
+#define LCDC (mem[0xff40])
+#define LY   (mem[0xff44])
+#define LYC  (mem[0xff45])
 
 uint32_t dmg_screen_palette[] = {0xffffffff, 0xffaaaaaa, 0xff555555, 0xff000000};
 uint8_t gbc_backgr_palettes[8*4*2]; // 8 palettes of 4 colors of 2 bytes.
 uint8_t gbc_sprite_palettes[8*4*2];
+bool isFrameReady;
+
+void lcd_update() {
+	isFrameReady = false;
+	bool coincidenceFlag = false;
+	bool isDisplayEnabled = mem[0xff40] & 0x80;
+	int scanlineClockThreshold = doubleSpeed ? 912 : 456;
+	int old = scanlineClocks;
+	if ((scanlineClocks += clocksIncrement) >= scanlineClockThreshold) {
+		scanlineClocks -= scanlineClockThreshold;
+		if (++(LY) > 153)
+			LY = 0;
+		coincidenceFlag = LY==LYC;
+		LCDSTAT = coincidenceFlag ? (LCDSTAT|4) : (LCDSTAT&~4);
+	}
+
+	// Set LCD mode flag
+	int lcd_mode;
+	if (LY >= 144)
+		lcd_mode = 1;
+	else if (scanlineClocks >= 252)
+		lcd_mode = 0;
+	else if (scanlineClocks >= 80)
+		lcd_mode = 3;
+	else
+		lcd_mode = 2;
+	LCDSTAT &= ~3;
+	LCDSTAT |= lcd_mode;
+
+	if (old < 252 && scanlineClocks >= 252 && LY < 144) { // H-Blank Interrupt
+		if (LCDSTAT & 0x08)
+			requestInterrupt(0x02);
+		hdma_transfer_continue();
+	}
+	if (scanlineClocks < old && LY == 144) { // V-Blank Interrupt
+		if (LCDSTAT & 0x10)
+			requestInterrupt(0x02);
+		if (isDisplayEnabled)
+			requestInterrupt(0x01);
+		if (show_boot_animation || isBootROMUnmapped) {
+			if (!isDisplayEnabled)
+				lcd_clear();
+			isFrameReady = true;
+		}
+	}
+	if (scanlineClocks < old && LY < 144) { // OAM Interrupt
+		if (LCDSTAT & 0x20)
+			requestInterrupt(0x02);
+		lcd_draw_scanline();
+	}
+	if (scanlineClocks < old && coincidenceFlag) { // Coincidence Interrupt
+		if (LCDSTAT & 0x40)
+			requestInterrupt(0x02);
+	}
+}
 
 void lcd_clear() {
 	for (int i=0; i<160*144; i++)
@@ -31,7 +88,7 @@ void lcd_draw_scanline() {
 		int x, y; // Coordinates in the BG/Window
 		if (isWindowDisplayEnabled && WY<=LY && WX<=screenX) {
 			x = (screenX-WX)&0xff;
-			y = (LY-WY)&0xff;
+			y = ((int)LY-WY)&0xff;
 			tileMap = WinTileMap;
 			if (windowInternalLineCounter >= 0) {
 				y = windowInternalLineCounter;
@@ -41,7 +98,7 @@ void lcd_draw_scanline() {
 			}
 		} else if (isBGDisplayEnabled) {
 			x = (screenX+SCX)&0xff;
-			y = (LY+SCY)&0xff;
+			y = ((int)LY+SCY)&0xff;
 			tileMap = BGTileMap;
 		} else {
 			break;
@@ -78,7 +135,7 @@ void lcd_draw_scanline() {
 			uint8_t b = ((px >> 10) & 0x1f) * 256/32;
 			px = 0xff000000 | (b << 16) | (g << 8) | (r << 0);
 		}
-		screen_pixels[LY*160 + screenX] = px;
+		screen_pixels[(int)LY*160 + screenX] = px;
 	}
 	if (incrementWindowInternalLineCounter)
 		windowInternalLineCounter++;
@@ -94,7 +151,7 @@ void lcd_draw_scanline() {
 		uint8_t *sprite = spriteAttrTable + sorted_sprite_indexes[i]*4;
 		int tile_number = sprite[2];
 		int spriteY = (int)sprite[0] - 16;
-		int v = LY - spriteY;
+		int v = (int)LY - spriteY;
 		bool flipX = sprite[3]&0x20;
 		bool flipY = sprite[3]&0x40;
 		if (v < 0)
@@ -146,7 +203,7 @@ void lcd_draw_scanline() {
 				uint8_t b = ((px >> 10) & 0x1f) * 256/32;
 				px = 0xff000000 | (b << 16) | (g << 8) | (r << 0);
 			}
-			screen_pixels[LY*160 + screenX] = px;
+			screen_pixels[(int)LY*160 + screenX] = px;
 		}
 	}
 }

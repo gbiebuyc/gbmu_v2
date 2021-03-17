@@ -9,8 +9,8 @@ void gbmu_update_debug_tiles_screen() {
 			for (int x=0; x<16; x++) {
 				uint8_t *tile = vram + tileIndex*16 + 0x2000*bank;
 				for (int v=0; v<8; v++) {
+					uint16_t pixels = ((uint16_t*)tile)[v];
 					for (int u=0; u<8; u++) {
-						uint16_t pixels = ((uint16_t*)tile)[v];
 						uint32_t px = pixels >> (7-u);
 						px = (px>>7&2) | (px&1);
 						px = dmg_screen_palette[px];

@@ -1,4 +1,4 @@
-#include "emu.h"
+#include <stdint.h>
 
 // Duration of each cpu instruction
 

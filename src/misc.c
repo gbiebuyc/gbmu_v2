@@ -33,7 +33,7 @@ void requestInterrupt(uint8_t interrupt) {
 void hdma_transfer_continue() {
 	if (!hdma_remaining_size)
 		return;
-	if (LY >= 144)
+	if (mem[0xff44] >= 144)
 		return;
 	for (int i=0; i<16; i++)
 		writeByte(hdma_dst+i, readByte(hdma_src+i));

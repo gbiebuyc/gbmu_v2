@@ -34,17 +34,7 @@ bool key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 	else if (event->keyval == GDK_KEY_Pause)
 		gtk_button_clicked((GtkButton*)btn_pause);
 	else if (event->keyval == GDK_KEY_F3) {
-		// Debug palettes
-		for (int j=0; j<8; j++) {
-			for (int i=0; i<4; i++) {
-				printf("%04X ", ((uint16_t*)gbc_backgr_palettes)[i+4*j]);
-			}
-			printf("    ");
-			for (int i=0; i<4; i++) {
-				printf("%04X ", ((uint16_t*)gbc_sprite_palettes)[i+4*j]);
-			}
-			printf("\n");
-		}
+		printf("pressed f3\n");
 	}
 	return TRUE;
 }
