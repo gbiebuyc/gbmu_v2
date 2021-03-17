@@ -32,9 +32,10 @@ char *gbmu_debug_info() {
 	b += sprintf(b, "ie=  %02X\n", IE);
 	b += sprintf(b, "pc= %04X  ", PC);
 	b += sprintf(b, "if=  %02X\n", IF);
-	b += sprintf(b, "ime=%d  ", IME);
-	b += sprintf(b, "flags=%.4s\n", flag_str);
+	b += sprintf(b, "ime=%X     ", IME);
+	b += sprintf(b, "spd= %X\n", doubleSpeed);
 	b += sprintf(b, "Next instr: %s\n", disassemble_instr(PC));
+	b += sprintf(b, "Flags: %.4s\n", flag_str);
 	b += sprintf(b,
 		"    _                     \n"
 		"  _|W|_               (K) \n"
