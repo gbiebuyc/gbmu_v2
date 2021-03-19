@@ -33,6 +33,8 @@ bool key_press_event(GtkWidget *widget, GdkEventKey *event, gpointer data)
 		my_quit();
 	else if (event->keyval == GDK_KEY_Pause)
 		gtk_button_clicked((GtkButton*)btn_pause);
+	else if (event->keyval == GDK_KEY_KP_Multiply)
+		gtk_button_clicked((GtkButton*)btn_reset);
 	else if (event->keyval == GDK_KEY_F3) {
 		printf("pressed f3\n");
 	}
