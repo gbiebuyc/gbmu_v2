@@ -3,7 +3,7 @@
 bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
 uint32_t *screen_pixels, *screen_debug_tiles_pixels;
 uint8_t *mem;
-uint8_t *gbc_wram;
+uint8_t *wram;
 uint8_t *vram;
 uint8_t *external_ram;
 uint8_t *gamerom;
@@ -24,52 +24,51 @@ bool show_boot_animation = true;
 bool enable_save_file = true;
 bool cartridgeHasBattery;
 t_cpuState cpuState;
+bool isROMLoaded;
+
+void gbmu_init() {
+	if (!(external_ram = malloc(32*1024)) ||
+		!(screen_pixels = malloc(160 * 144 * 4)) ||
+		!(screen_debug_tiles_pixels = malloc(SCREEN_DEBUG_TILES_W * SCREEN_DEBUG_TILES_H * 4)) ||
+		!(mem = malloc(0x10000)) ||
+		!(wram = malloc(32*1024)) ||
+		!(vram = malloc(16*1024)) ||
+		!(gamerom = malloc(8*1024*1024))
+		) {
+		exit(printf("malloc error\n"));
+	}
+}
 
 void gbmu_reset() {
 	PC = SP = scanlineClocks = frameClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = cpuState = 0;
 	gameMode = hardwareMode;
+	memset(mem, 0, 0x10000);
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
 	lcd_clear();
-	free(mem);
-	if (!(mem = calloc(1, 0x10000)))
-		exit(printf("malloc error\n"));
-	free(gbc_wram);
-	if (!(gbc_wram = calloc(1, 32*1024)))
-		exit(printf("malloc error\n"));
-	free(vram);
-	if (!(vram = calloc(1, 16*1024)))
-		exit(printf("malloc error\n"));
 }
 
 bool gbmu_load_rom(char *filename) {
-	if (external_ram)
+	if (savefilename)
 		gbmu_save_ext_ram();
-	if (!external_ram && !(external_ram = calloc(1, 32*1024)))
-		exit(printf("malloc error\n"));
-	if (!screen_pixels && !(screen_pixels = malloc(160 * 144 * 4)))
-		exit(printf("malloc error\n"));
-	if (!screen_debug_tiles_pixels && !(screen_debug_tiles_pixels = malloc(SCREEN_DEBUG_TILES_W * SCREEN_DEBUG_TILES_H * 4)))
-		exit(printf("malloc error\n"));
 	gbmu_reset();
-	free(gamerom); gamerom = NULL;
 	free(savefilename); savefilename = NULL;
 	set_mbc_type();
 	hardwareMode = MODE_GBC;
 	cartridgeTitle = cartridgeTypeStr = NULL;
 	numROMBanks = extRAMSize = zelda_fix = cartridgeHasBattery = 0;
+	memset(gamerom, 0, 8*1024*1024);
+	isROMLoaded = false;
 	FILE *file;
 	if (!filename || !(file = fopen(filename, "rb"))) {
 		return false;
-	}
-	if (!(gamerom = malloc(8*1024*1024))) { // max 8 MB cartridges
-		fclose(file); exit(printf("malloc error\n"));
 	}
 	int gamerom_size = 0;
 	while (fread(gamerom + gamerom_size, 1, 0x100, file) == 0x100)
 		if ((gamerom_size += 0x100) >= 8*1024*1024)
 			break;
 	fclose(file);
+	isROMLoaded = true;
 	if (filename && (savefilename = malloc(strlen(filename) + 42))) {
 		strcpy(savefilename, filename);
 		strcat(savefilename, ".sav");
@@ -95,7 +94,7 @@ void gbmu_run_one_frame() {
 void gbmu_run_one_instr() {
 	if (!isBootROMUnmapped)
 		gameMode = hardwareMode;
-	if (!gamerom)
+	if (!isROMLoaded)
 		show_boot_animation = true;
 
 	clocksIncrement = 0;

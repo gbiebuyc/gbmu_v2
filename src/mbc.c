@@ -19,12 +19,11 @@ uint8_t readByte(uint16_t addr) {
 		return vram[addr-0x8000 + 0x2000*(mem[0xFF4F]&1)];
 	else if (addr<0xC000) // External RAM
 		return mbc_readExtRAM(addr);
-	else if (addr<0xD000) // Work RAM Bank 0
-		return mem[addr];
-	else if (addr<0xE000 && hardwareMode==MODE_DMG) // Work RAM Bank 1
-		return mem[addr];
-	else if (addr<0xE000 && hardwareMode==MODE_GBC) // Work RAM Bank 1-7 (GBC)
-		return gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70]&7)];
+	else if (addr<0xD000 ||
+			(addr<0xE000 && hardwareMode==MODE_DMG)) // Work RAM Bank 0-1
+		return wram[addr-0xC000];
+	else if (addr<0xE000 && hardwareMode==MODE_GBC)  // Work RAM Bank 1-7 (GBC)
+		return wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70]&7)];
 	else if (addr<0xFE00) // Same as C000-DDFF (ECHO)
 		return readByte(addr-0x2000);
 	else if (addr>=0xFF10 && addr<=0xFF26)
@@ -51,19 +50,18 @@ void writeByte(uint16_t addr, uint8_t val) {
 		vram[addr-0x8000 + 0x2000*(mem[0xFF4F]&1)] = val;
 	else if (addr<0xC000) // External RAM
 		mbc_writeExtRAM(addr, val);
-	else if (addr<0xD000) // Work RAM Bank 0
-		mem[addr] = val;
-	else if (addr<0xE000 && hardwareMode==MODE_DMG) // Work RAM Bank 1
-		mem[addr] = val;
-	else if (addr<0xE000 && hardwareMode==MODE_GBC) // Work RAM Bank 1-7 (GBC)
-		gbc_wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70]&7)] = val;
+	else if (addr<0xD000 ||
+			(addr<0xE000 && hardwareMode==MODE_DMG)) // Work RAM Bank 0-1
+		wram[addr-0xC000] = val;
+	else if (addr<0xE000 && hardwareMode==MODE_GBC)  // Work RAM Bank 1-7 (GBC)
+		wram[addr-0xD000 + 0x1000*max(1, mem[0xFF70]&7)] = val;
 	else if (addr<0xFE00) // Same as C000-DDFF (ECHO)
 		writeByte(addr-0x2000, val);
 	else if (addr>=0xFF10 && addr<=0xFF26)
 		snd_writeRegister(addr, val);
 	if (addr==0xff50) {
 		isBootROMUnmapped = true;
-		if (gamerom && isDMG(gamerom[0x143]))
+		if (isROMLoaded && isDMG(gamerom[0x143]))
 			gameMode = MODE_DMG;
 	}
 	else if (addr==0xff02 && val==0x81) // Serial Data Transfer (Link Cable)
@@ -336,7 +334,7 @@ void    MBC5_writeExtRAM(uint16_t addr, uint8_t val) {
 }
 
 void set_mbc_type() {
-	if (!gamerom) {
+	if (!isROMLoaded) {
 		mbc_read        = noCartridge_read;
 		mbc_readExtRAM  = noCartridge_readExtRAM;
 		mbc_write       = noCartridge_write;

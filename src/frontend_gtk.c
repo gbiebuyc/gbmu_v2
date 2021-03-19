@@ -178,7 +178,10 @@ void btn_force_dmg_gbc_clicked() {
 
 
 int main(int ac, char **av) {
-	keyboard_state = calloc(0x10000, sizeof(bool));
+	if (!(keyboard_state = calloc(0x10000, sizeof(bool))))
+		exit(printf("malloc error\n"));
+
+	gbmu_init();
 
 	gtk_init(&ac, &av);
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);

@@ -48,7 +48,7 @@ typedef enum {
 
 extern bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
 extern uint32_t *screen_pixels, *screen_debug_tiles_pixels;
-extern uint8_t *gbc_wram;
+extern uint8_t *wram;
 extern uint8_t *vram;
 extern uint8_t *external_ram;
 extern uint32_t dmg_screen_palette[4];
@@ -78,7 +78,9 @@ extern bool show_boot_animation, enable_save_file;
 extern bool cartridgeHasBattery;
 extern bool isFrameReady;
 extern t_cpuState cpuState;
+extern bool isROMLoaded;
 
+void	gbmu_init();
 void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);
 void	gbmu_run_one_instr();

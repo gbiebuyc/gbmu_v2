@@ -5,7 +5,7 @@ void gbmu_quit() {
 	free(screen_pixels);
 	free(screen_debug_tiles_pixels);
 	free(mem);
-	free(gbc_wram);
+	free(wram);
 	free(external_ram);
 	free(vram);
 	free(gamerom);
