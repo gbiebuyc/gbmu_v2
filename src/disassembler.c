@@ -12,7 +12,7 @@ char *disassemble_instr(uint16_t addr) {
 	switch (readByte(addr)) {
 		case 0x00: sprintf(s, "NOP"); return s;
 		case 0x01: sprintf(s, "LD BC,%04X", w); return s;
-		case 0x02: sprintf(s, "LD BC,A"); return s;
+		case 0x02: sprintf(s, "LD (BC),A"); return s;
 		case 0x03: sprintf(s, "INC BC"); return s;
 		case 0x04: sprintf(s, "INC B"); return s;
 		case 0x05: sprintf(s, "DEC B"); return s;
@@ -21,7 +21,7 @@ char *disassemble_instr(uint16_t addr) {
 		case 0x08: sprintf(s, "LD (%04X),SP", w); return s;
 		case 0x09: sprintf(s, "ADD HL,BC"); return s;
 		case 0x0A: sprintf(s, "LD A,(BC)"); return s;
-		case 0x0B: sprintf(s, "DEC B"); return s;
+		case 0x0B: sprintf(s, "DEC BC"); return s;
 		case 0x0C: sprintf(s, "INC C"); return s;
 		case 0x0D: sprintf(s, "DEC C"); return s;
 		case 0x0E: sprintf(s, "LD C,%02X", b); return s;

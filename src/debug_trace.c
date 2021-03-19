@@ -9,13 +9,15 @@ void debug_trace() {
 	// 	exit(0);
 	if (!debug)
 		return;
+	if (cpuState==HALT)
+		return;
 	char flag_str[4];
 	flag_str[0] = (regs.F & 0x80) ? 'Z' : '-';
 	flag_str[1] = (regs.F & 0x40) ? 'N' : '-';
 	flag_str[2] = (regs.F & 0x20) ? 'H' : '-';
 	flag_str[3] = (regs.F & 0x10) ? 'C' : '-';
 	printf("PC=%04X ", PC);
-	printf("%-10s ", disassemble_instr(PC));
+	printf("%-13s ", disassemble_instr(PC));
 	printf("AF=%04X ", regs.AF);
 	printf("BC=%04X ", regs.BC);
 	printf("DE=%04X ", regs.DE);
