@@ -61,7 +61,7 @@ extern uint8_t bootrom_gbc[];
 extern uint8_t cycleTable[512]; // Duration of each cpu instruction.
 extern uint16_t PC, SP;
 extern t_regs regs;
-extern int scanlineClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
+extern int scanlineClocks, frameClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
 extern bool IME;
 extern bool isBootROMUnmapped;
 extern int ROMBankNumber, externalRAMBankNumber;

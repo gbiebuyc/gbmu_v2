@@ -123,6 +123,15 @@ void writeByte(uint16_t addr, uint8_t val) {
 				writeByte(hdma_dst+i, readByte(hdma_src+i));
 		}
 	}
+	else if (addr==0xff40) {
+		mem[addr] = val;
+		if (!(val & 0x80)) { // LCD is disabled
+			mem[0xff41] &= ~3; // Mode = 0
+			mem[0xff44] = 0;   // LY = 0
+			scanlineClocks = 0;
+			lcd_clear();
+		}
+	}
 	else
 		mem[addr] = val;
 }

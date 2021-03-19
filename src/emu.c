@@ -9,7 +9,7 @@ uint8_t *external_ram;
 uint8_t *gamerom;
 uint16_t PC, SP;
 t_regs regs;
-int scanlineClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
+int scanlineClocks, frameClocks, divTimerClocks, counterTimerClocks, clocksIncrement;
 bool IME;
 bool isBootROMUnmapped;
 int ROMBankNumber, externalRAMBankNumber;
@@ -26,7 +26,7 @@ bool cartridgeHasBattery;
 t_cpuState cpuState;
 
 void gbmu_reset() {
-	PC = SP = scanlineClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = cpuState = 0;
+	PC = SP = scanlineClocks = frameClocks = divTimerClocks = counterTimerClocks = IME = isBootROMUnmapped = ROMBankNumber = externalRAMBankNumber = doubleSpeed = mbc1_banking_mode = mbc1_bank1_reg = mbc1_bank2_reg = mbc_ram_enable = cpuState = 0;
 	gameMode = hardwareMode;
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
@@ -168,7 +168,21 @@ void gbmu_run_one_instr() {
 		}
 	}
 
+	// Double Speed doesn't affect the following (LCD, Sound).
+	if (doubleSpeed)
+		clocksIncrement /= 2;
+
 	snd_update();
 
 	lcd_update();
+
+	frameClocks += clocksIncrement;
+	int safety_limit = 70224 + 42;
+	if (!isFrameReady && (frameClocks >= safety_limit) &&
+		(show_boot_animation || isBootROMUnmapped)) {
+		// Force refresh to prevent UI freeze when LCD is off for example.
+		isFrameReady = true;
+	}
+	if (isFrameReady)
+		frameClocks = 0;
 }

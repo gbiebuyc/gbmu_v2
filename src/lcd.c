@@ -11,12 +11,14 @@ bool isFrameReady;
 
 void lcd_update() {
 	isFrameReady = false;
+
+	if (!(mem[0xff40] & 0x80)) // LCD is disabled
+		return;
+
 	bool coincidenceFlag = false;
-	bool isDisplayEnabled = mem[0xff40] & 0x80;
-	int scanlineClockThreshold = doubleSpeed ? 912 : 456;
 	int old = scanlineClocks;
-	if ((scanlineClocks += clocksIncrement) >= scanlineClockThreshold) {
-		scanlineClocks -= scanlineClockThreshold;
+	if ((scanlineClocks += clocksIncrement) >= 456) {
+		scanlineClocks -= 456;
 		if (++(LY) > 153)
 			LY = 0;
 		coincidenceFlag = LY==LYC;
@@ -44,11 +46,8 @@ void lcd_update() {
 	if (scanlineClocks < old && LY == 144) { // V-Blank Interrupt
 		if (LCDSTAT & 0x10)
 			requestInterrupt(0x02);
-		if (isDisplayEnabled)
-			requestInterrupt(0x01);
+		requestInterrupt(0x01);
 		if (show_boot_animation || isBootROMUnmapped) {
-			if (!isDisplayEnabled)
-				lcd_clear();
 			isFrameReady = true;
 		}
 	}
