@@ -1,35 +1,43 @@
 #include "emu.h"
+#include <errno.h>
+#include <fcntl.h>
 
-int gbmu_save_ext_ram() {
+#define SAVE_SIZE 32*1024
+
+void gbmu_save_ext_ram() {
 	if (getenv("GBMU_SKIP_SAVE") || !cartridgeHasBattery)
-		return 0;
-	if (!savefilename)
-		return (printf("Error saving game\n"));
-	FILE *f;
-	if (!(f = fopen(savefilename, "wb")))
-		return (printf("Error saving game\n"));
-	size_t sz = 32*1024;
-	if (fwrite(external_ram, 1, sz, f) != sz) {
-		fclose(f);
-		return (printf("Error saving game\n"));
+		return;
+	int fd;
+	if ((fd = open(savefilename, O_WRONLY|O_CREAT, 0666)) < 0) {
+		perror("Error saving game: open");
+		return;
 	}
-	printf("Saved successfully\n");
-	fclose(f);
+	ssize_t ret = write(fd, external_ram, SAVE_SIZE);
+	if (ret < 0)
+		perror("Error saving game: write");
+	else if (ret < SAVE_SIZE)
+		printf("Error saving game: write: end-of-file\n");
+	else
+		printf("Saved successfully\n");
+	close(fd);
 }
 
-int gbmu_load_ext_ram() {
+void gbmu_load_ext_ram() {
 	if (getenv("GBMU_SKIP_SAVE") || !cartridgeHasBattery)
-		return 0;
-	if (!savefilename)
-		return (printf("Error loading save\n"));
-	FILE *f;
-	if (!(f = fopen(savefilename, "rb")))
-		return (printf("Error loading save\n"));
-	size_t sz = 32*1024;
-	if (fread(external_ram, 1, sz, f) != sz) {
-		fclose(f);
-		return (printf("Error loading save\n"));
+		return;
+	int fd;
+	if ((fd = open(savefilename, O_RDONLY)) < 0) {
+		if (errno == ENOENT)
+			return; // Not yet created. Ignore.
+		perror("Error loading save: open");
+		return;
 	}
-	printf("Loaded save file\n");
-	fclose(f);
+	ssize_t ret = read(fd, external_ram, SAVE_SIZE);
+	if (ret < 0)
+		perror("Error loading save: read");
+	else if (ret < SAVE_SIZE)
+		printf("Error loading save: read: end-of-file\n");
+	else
+		printf("Loaded save file\n");
+	close(fd);
 }

@@ -15,6 +15,7 @@
 #define LCDSTAT mem[0xff41]
 #define SCREEN_DEBUG_TILES_W (32 * (8 + 1))
 #define SCREEN_DEBUG_TILES_H (24 * (8 + 1))
+#define MAX_ROM_SIZE (8*1024*1024)
 
 enum {
 	GBMU_SELECT,
@@ -86,8 +87,8 @@ void	gbmu_run_one_instr();
 void	gbmu_run_one_frame();
 char	*gbmu_debug_info();
 void	gbmu_update_debug_tiles_screen();
-int		gbmu_save_ext_ram();
-int		gbmu_load_ext_ram();
+void	gbmu_save_ext_ram();
+void	gbmu_load_ext_ram();
 void	gbmu_quit();
 
 // Internal

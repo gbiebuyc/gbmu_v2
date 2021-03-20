@@ -178,8 +178,10 @@ void btn_force_dmg_gbc_clicked() {
 
 
 int main(int ac, char **av) {
-	if (!(keyboard_state = calloc(0x10000, sizeof(bool))))
-		exit(printf("malloc error\n"));
+	if (!(keyboard_state = calloc(0x10000, sizeof(bool)))) {
+		perror("calloc");
+		exit(EXIT_FAILURE);
+	}
 
 	gbmu_init();
 

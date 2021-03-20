@@ -1,4 +1,5 @@
 #include "emu.h"
+#include <fcntl.h>
 
 bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
 uint32_t *screen_pixels, *screen_debug_tiles_pixels;
@@ -31,9 +32,11 @@ void gbmu_init() {
 		!(mem = malloc(0x10000)) ||
 		!(wram = malloc(32*1024)) ||
 		!(vram = malloc(16*1024)) ||
-		!(gamerom = malloc(8*1024*1024))
-		) {
-		exit(printf("malloc error\n"));
+		!(gamerom = malloc(MAX_ROM_SIZE + 1))
+		)
+	{
+		perror("malloc");
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -55,17 +58,22 @@ bool gbmu_load_rom(char *filename) {
 	hardwareMode = MODE_GBC;
 	cartridgeTitle = cartridgeTypeStr = NULL;
 	numROMBanks = extRAMSize = zelda_fix = cartridgeHasBattery = 0;
-	memset(gamerom, 0, 8*1024*1024);
+	memset(gamerom, 0, MAX_ROM_SIZE);
 	isROMLoaded = false;
-	FILE *file;
-	if (!filename || !(file = fopen(filename, "rb"))) {
+	int fd;
+	if ((fd = open(filename, O_RDONLY)) < 0) {
+		perror("open");
 		return false;
 	}
-	int gamerom_size = 0;
-	while (fread(gamerom + gamerom_size, 1, 0x100, file) == 0x100)
-		if ((gamerom_size += 0x100) >= 8*1024*1024)
-			break;
-	fclose(file);
+	ssize_t ret = read(fd, gamerom, MAX_ROM_SIZE + 1);
+	close(fd);
+	if (ret < 0) {
+		perror("read");
+		return false;
+	} else if (ret > MAX_ROM_SIZE) {
+		printf("Error: ROM file too big\n");
+		return false;
+	}
 	isROMLoaded = true;
 	if (filename && (savefilename = malloc(strlen(filename) + 42))) {
 		strcpy(savefilename, filename);
