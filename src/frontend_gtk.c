@@ -246,11 +246,6 @@ int main(int ac, char **av) {
 	txtbuf = gtk_text_view_get_buffer((GtkTextView*)txtview);
 	gtk_container_add(GTK_CONTAINER(hbox), txtview);
 
-	if (getenv("GBMU_SKIP_LOGO"))
-		show_boot_animation = false;
-	if (getenv("GBMU_SKIP_SAVE"))
-		enable_save_file = false;
-
 	load_rom(av[1]);
 
 	update_buttons();

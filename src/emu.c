@@ -20,8 +20,6 @@ bool zelda_fix;
 uint8_t mbc1_banking_mode, mbc1_bank1_reg, mbc1_bank2_reg;
 bool mbc_ram_enable;
 char *savefilename, *cartridgeTitle, *cartridgeTypeStr;
-bool show_boot_animation = true;
-bool enable_save_file = true;
 bool cartridgeHasBattery;
 t_cpuState cpuState;
 bool isROMLoaded;
@@ -85,6 +83,11 @@ bool gbmu_load_rom(char *filename) {
 }
 
 void gbmu_run_one_frame() {
+	if (!isBootROMUnmapped &&
+		(getenv("GBMU_SKIP_BOOT_ANIMATION") || gbmu_keys[GBMU_START]))
+	{
+		skip_boot_animation();
+	}
 	isFrameReady = false;
 	while (!isFrameReady) {
 		gbmu_run_one_instr();
@@ -94,8 +97,6 @@ void gbmu_run_one_frame() {
 void gbmu_run_one_instr() {
 	if (!isBootROMUnmapped)
 		gameMode = hardwareMode;
-	if (!isROMLoaded)
-		show_boot_animation = true;
 
 	clocksIncrement = 0;
 	IF |= 0b11100000;
@@ -177,8 +178,7 @@ void gbmu_run_one_instr() {
 
 	frameClocks += clocksIncrement;
 	int safety_limit = 70224 + 42;
-	if (!isFrameReady && (frameClocks >= safety_limit) &&
-		(show_boot_animation || isBootROMUnmapped)) {
+	if (!isFrameReady && (frameClocks >= safety_limit)) {
 		// Force refresh to prevent UI freeze when LCD is off for example.
 		isFrameReady = true;
 	}

@@ -47,9 +47,7 @@ void lcd_update() {
 		if (LCDSTAT & 0x10)
 			requestInterrupt(0x02);
 		requestInterrupt(0x01);
-		if (show_boot_animation || isBootROMUnmapped) {
-			isFrameReady = true;
-		}
+		isFrameReady = true;
 	}
 	if (scanlineClocks < old && LY < 144) { // OAM Interrupt
 		if (LCDSTAT & 0x20)

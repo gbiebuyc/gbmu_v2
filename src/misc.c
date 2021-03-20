@@ -45,3 +45,17 @@ void hdma_transfer_continue() {
 bool isDMG(uint8_t val) {
 	return (val != 0x80) && (val != 0xC0);
 }
+
+void skip_boot_animation() {
+	// If the logo data is valid, the animation stops when the bootrom is disabled.
+	// Otherwise, it goes goes in an infinite loop at address 00E9 (DMG) or 00DB (GBC).
+	while (true) {
+		if (isBootROMUnmapped)
+			return;
+		if (gameMode==MODE_DMG && PC==0x00E9 && !FLAG_Z)
+			return;
+		if (gameMode==MODE_GBC && PC==0x00DB && !FLAG_Z)
+			return;
+		gbmu_run_one_instr();
+	}
+}
