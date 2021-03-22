@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include <math.h>
 #include "emu.h"
 
 #define SCREEN_SCALE 2
@@ -225,6 +226,25 @@ int main(int ac, char **av) {
 	g_signal_connect(btn_force_dmg_gbc, "clicked", G_CALLBACK(btn_force_dmg_gbc_clicked), NULL);
 	gtk_box_pack_start((GtkBox*)vbox, btn_force_dmg_gbc, 0, 0, 0);
 
+	GtkWidget *frame_speed_control, *box_speed_control, *radio1, *radio2, *radio3, *radio4;
+
+	frame_speed_control = gtk_frame_new ("Speed");
+	gtk_widget_set_margin_top(frame_speed_control, 10);
+	gtk_box_pack_start((GtkBox*)vbox, frame_speed_control, 0, 0, 0);
+
+	box_speed_control = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+	gtk_container_add (GTK_CONTAINER (frame_speed_control), box_speed_control);
+
+	radio1 = gtk_radio_button_new_with_label(NULL, "x0.5");
+	gtk_box_pack_start (GTK_BOX (box_speed_control), radio1, 0, 0, 0);
+	radio2 = gtk_radio_button_new_with_label_from_widget (GTK_RADIO_BUTTON (radio1), "x1.0");
+	gtk_box_pack_start (GTK_BOX (box_speed_control), radio2, 0, 0, 0);
+	radio3 = gtk_radio_button_new_with_label_from_widget (GTK_RADIO_BUTTON (radio1), "x2.0");
+	gtk_box_pack_start (GTK_BOX (box_speed_control), radio3, 0, 0, 0);
+	radio4 = gtk_radio_button_new_with_label_from_widget (GTK_RADIO_BUTTON (radio1), "Unlimited");
+	gtk_box_pack_start (GTK_BOX (box_speed_control), radio4, 0, 0, 0);
+	gtk_toggle_button_set_active((GtkToggleButton*)radio2, true);
+
 	gtk_container_add(GTK_CONTAINER(hbox), gtk_separator_new(0));
 
 	image = gtk_image_new();
@@ -271,12 +291,25 @@ int main(int ac, char **av) {
 			refresh_screen();
 		}
 
+		double speed;
+		if (gtk_toggle_button_get_active((GtkToggleButton*)radio1))
+			speed = 0.5;
+		else if (gtk_toggle_button_get_active((GtkToggleButton*)radio2))
+			speed = 1.0;
+		else if (gtk_toggle_button_get_active((GtkToggleButton*)radio3))
+			speed = 2.0;
+		else if (gtk_toggle_button_get_active((GtkToggleButton*)radio4))
+			speed = INFINITY;
+
+		int frame_duration = 1000000.0 / (60.0 * speed);
+		// printf("frame duration: %d\n", frame_duration);
+
 		gettimeofday(&after_tv, NULL);
 		int64_t before_msec = ((int64_t)before_tv.tv_sec)*1000000 + before_tv.tv_usec;
 		int64_t after_msec = ((int64_t)after_tv.tv_sec)*1000000 + after_tv.tv_usec;
 		int64_t elapsed_time = after_msec - before_msec;
-		if (elapsed_time < 16000)
-			usleep(16000 - elapsed_time);
+		if (elapsed_time < frame_duration)
+			usleep(frame_duration - elapsed_time);
 	}
 
 	free(keyboard_state);
