@@ -17,6 +17,10 @@
 #define SCREEN_DEBUG_TILES_H (24 * (8 + 1))
 #define MAX_ROM_SIZE (8*1024*1024)
 
+#ifndef O_BINARY
+# define O_BINARY 0
+#endif
+
 enum {
 	GBMU_SELECT,
 	GBMU_START,
@@ -79,10 +83,14 @@ extern bool cartridgeHasBattery;
 extern bool isFrameReady;
 extern t_cpuState cpuState;
 extern bool isROMLoaded;
+extern bool skipBootAnimation;
+extern double emulation_speed;
+extern int num_audio_channels;
 
 void	gbmu_init();
 void	gbmu_reset();
 bool	gbmu_load_rom(char *filepath);
+void	gbmu_fill_audio_buffer(uint8_t *buf, int len, void (*frame_is_ready)());
 void	gbmu_run_one_instr();
 void	gbmu_run_one_frame();
 char	*gbmu_debug_info();

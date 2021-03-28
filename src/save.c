@@ -8,7 +8,7 @@ void gbmu_save_ext_ram() {
 	if (getenv("GBMU_SKIP_SAVE") || !cartridgeHasBattery)
 		return;
 	int fd;
-	if ((fd = open(savefilename, O_WRONLY|O_CREAT, 0666)) < 0) {
+	if ((fd = open(savefilename, O_WRONLY|O_CREAT|O_BINARY, 0666)) < 0) {
 		perror("Error saving game: open");
 		return;
 	}
@@ -26,7 +26,7 @@ void gbmu_load_ext_ram() {
 	if (getenv("GBMU_SKIP_SAVE") || !cartridgeHasBattery)
 		return;
 	int fd;
-	if ((fd = open(savefilename, O_RDONLY)) < 0) {
+	if ((fd = open(savefilename, O_RDONLY|O_BINARY)) < 0) {
 		if (errno == ENOENT)
 			return; // Not yet created. Ignore.
 		perror("Error loading save: open");

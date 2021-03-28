@@ -1,5 +1,6 @@
 #include "emu.h"
 #include <fcntl.h>
+#include <errno.h>
 
 bool gbmu_keys[GBMU_NUMBER_OF_KEYS];
 uint32_t *screen_pixels, *screen_debug_tiles_pixels;
@@ -24,6 +25,8 @@ char *savefilename, *cartridgeTitle, *cartridgeTypeStr;
 bool cartridgeHasBattery;
 t_cpuState cpuState;
 bool isROMLoaded;
+bool skipBootAnimation;
+double emulation_speed = 1.0;
 
 void gbmu_init() {
 	if (!(external_ram = malloc(32*1024)) ||
@@ -47,6 +50,7 @@ void gbmu_reset() {
 	memset(&regs, 0, sizeof(regs));
 	memset(&gbc_backgr_palettes, 0xff, sizeof(gbc_backgr_palettes));
 	lcd_clear();
+	skipBootAnimation = getenv("GBMU_SKIP_BOOT_ANIMATION");
 }
 
 bool gbmu_load_rom(char *filename) {
@@ -61,8 +65,8 @@ bool gbmu_load_rom(char *filename) {
 	memset(gamerom, 0, MAX_ROM_SIZE);
 	isROMLoaded = false;
 	int fd;
-	if ((fd = open(filename, O_RDONLY)) < 0) {
-		perror("open");
+	if ((fd = open(filename, O_RDONLY|O_BINARY)) < 0) {
+		fprintf(stderr, "open: %s: %s\n", strerror(errno), filename);
 		return false;
 	}
 	ssize_t ret = read(fd, gamerom, MAX_ROM_SIZE + 1);
@@ -92,7 +96,7 @@ bool gbmu_load_rom(char *filename) {
 
 void gbmu_run_one_frame() {
 	if (!isBootROMUnmapped &&
-		(getenv("GBMU_SKIP_BOOT_ANIMATION") || gbmu_keys[GBMU_START]))
+		(skipBootAnimation || gbmu_keys[GBMU_START]))
 	{
 		skip_boot_animation();
 	}
@@ -186,7 +190,7 @@ void gbmu_run_one_instr() {
 
 	frameClocks += clocksIncrement;
 	int safety_limit = 70224 + 42;
-	if (!isFrameReady && (frameClocks >= safety_limit)) {
+	if (frameClocks >= safety_limit) {
 		// Force refresh to prevent UI freeze when LCD is off for example.
 		isFrameReady = true;
 	}

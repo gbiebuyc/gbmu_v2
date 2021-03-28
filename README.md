@@ -1,7 +1,7 @@
 # gbmu
 This project is for learning purposes.
-## Dependencies
-Debian/Ubuntu: `sudo apt install libgtk-3-dev`
+## Build dependencies
+Debian/Ubuntu: `sudo apt install libgtk-3-dev libpulse-dev`
 ## Passed tests
 - blargg/cpu_instrs
 - blargg/halt_bug

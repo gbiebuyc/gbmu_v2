@@ -1,5 +1,8 @@
+#ifdef GBMU_USE_GTK
+
 #include <gtk/gtk.h>
-#include <stdio.h>
+#include <pulse/simple.h>
+#include <pulse/error.h>
 #include <sys/time.h>
 #include <math.h>
 #include "emu.h"
@@ -20,7 +23,10 @@ GtkWidget *btn_reset;
 GtkWidget *btn_run_frame;
 GtkWidget *btn_run_instr;
 GtkWidget *btn_force_dmg_gbc;
+GtkWidget *frame_speed_control, *box_speed_control, *radio1, *radio2, *radio3, *radio4;
 bool running;
+int64_t time_called_pulseaudio_write;
+pthread_mutex_t my_mutex;
 
 void my_quit() {
 	running = false;
@@ -177,6 +183,67 @@ void btn_force_dmg_gbc_clicked() {
 	refresh_screen();
 }
 
+int64_t currentTimeMillis() {
+	struct timeval time;
+	gettimeofday(&time, NULL);
+	int64_t sec = (int64_t)(time.tv_sec) * 1000;
+	int64_t milli = (time.tv_usec / 1000);
+	return sec + milli;
+}
+
+void frame_is_ready() {
+
+	while (gtk_events_pending())
+		gtk_main_iteration_do(false);
+
+	if (!running)
+		return;
+
+	refresh_screen();
+
+	update_input();
+
+	if (gtk_toggle_button_get_active((GtkToggleButton*)radio1))
+		emulation_speed = 0.5;
+	else if (gtk_toggle_button_get_active((GtkToggleButton*)radio2))
+		emulation_speed = 1.0;
+	else if (gtk_toggle_button_get_active((GtkToggleButton*)radio3))
+		emulation_speed = 2.0;
+}
+
+void set_time_called_pulseaudio_write(int64_t time) {
+	pthread_mutex_lock(&my_mutex);
+	time_called_pulseaudio_write = time;
+	pthread_mutex_unlock(&my_mutex);
+}
+
+int64_t get_time_called_pulseaudio_write() {
+	pthread_mutex_lock(&my_mutex);
+	int64_t ret = time_called_pulseaudio_write;
+	pthread_mutex_unlock(&my_mutex);
+	return ret;
+}
+
+void *check_that_pulseaudio_write_isnt_stuck(void *arg) {
+	(void)arg;
+	while (true) {
+		int64_t t = get_time_called_pulseaudio_write();
+		int64_t timeout = 3000;
+		if (t && ((currentTimeMillis() - t) > timeout))
+		{
+			printf(
+				"PulseAudio seems to be stuck.\n"
+				"This is a known bug in VirtualBox. https://www.virtualbox.org/ticket/18594.\n"
+				"Workarounds:\n"
+				"- reboot guest system or\n"
+				"- sleep and wake up guest system (faster than reboot)\n"
+			);
+			exit(EXIT_FAILURE);
+		}
+		sleep(1);
+	}
+}
+
 
 int main(int ac, char **av) {
 	if (!(keyboard_state = calloc(0x10000, sizeof(bool)))) {
@@ -226,8 +293,6 @@ int main(int ac, char **av) {
 	g_signal_connect(btn_force_dmg_gbc, "clicked", G_CALLBACK(btn_force_dmg_gbc_clicked), NULL);
 	gtk_box_pack_start((GtkBox*)vbox, btn_force_dmg_gbc, 0, 0, 0);
 
-	GtkWidget *frame_speed_control, *box_speed_control, *radio1, *radio2, *radio3, *radio4;
-
 	frame_speed_control = gtk_frame_new ("Speed");
 	gtk_widget_set_margin_top(frame_speed_control, 10);
 	gtk_box_pack_start((GtkBox*)vbox, frame_speed_control, 0, 0, 0);
@@ -241,8 +306,6 @@ int main(int ac, char **av) {
 	gtk_box_pack_start (GTK_BOX (box_speed_control), radio2, 0, 0, 0);
 	radio3 = gtk_radio_button_new_with_label_from_widget (GTK_RADIO_BUTTON (radio1), "x2.0");
 	gtk_box_pack_start (GTK_BOX (box_speed_control), radio3, 0, 0, 0);
-	radio4 = gtk_radio_button_new_with_label_from_widget (GTK_RADIO_BUTTON (radio1), "Unlimited");
-	gtk_box_pack_start (GTK_BOX (box_speed_control), radio4, 0, 0, 0);
 	gtk_toggle_button_set_active((GtkToggleButton*)radio2, true);
 
 	gtk_container_add(GTK_CONTAINER(hbox), gtk_separator_new(0));
@@ -273,45 +336,66 @@ int main(int ac, char **av) {
 	update_buttons();
 	gtk_widget_show_all(window);
 
+	#define AUDIO_BUF_COUNT 60
+	#define AUDIO_BUF_SIZE (AUDIO_BUF_COUNT * sizeof(float))
+
+	pa_sample_spec ss;
+	ss.format = PA_SAMPLE_FLOAT32;
+	ss.channels = 1;
+	ss.rate = 44100;
+
+	pa_buffer_attr attr;
+	attr.maxlength = AUDIO_BUF_SIZE;
+	attr.tlength = AUDIO_BUF_SIZE;
+	attr.prebuf = AUDIO_BUF_SIZE;
+	attr.minreq = 0;
+	attr.fragsize = (uint32_t) -1;
+
+	pa_simple *s;
+	int error;
+	if (!(s = pa_simple_new(NULL, av[0], PA_STREAM_PLAYBACK, NULL, "playback", &ss, NULL, &attr, &error))) {
+		fprintf(stderr, __FILE__": pa_simple_new() failed: %s\n", pa_strerror(error));
+		exit(EXIT_FAILURE);
+	}
+	num_audio_channels = ss.channels;
+	uint8_t *audio_buf;
+	if (!(audio_buf = malloc(AUDIO_BUF_SIZE))) {
+		perror("malloc");
+		exit(EXIT_FAILURE);
+	}
+	if (pthread_mutex_init(&my_mutex, NULL)) {
+		puts("mutex init has failed");
+		exit(EXIT_FAILURE);
+	}
+	pthread_t thread;
+	if ((pthread_create(&thread, NULL, check_that_pulseaudio_write_isnt_stuck, NULL))) {
+		puts("pthread_create error");
+		exit(EXIT_FAILURE);
+	}
+
 	running = true;
 	while (running) {
 
-		struct timeval before_tv, after_tv;
-		gettimeofday(&before_tv, NULL);
-
-		while (gtk_events_pending())
-			gtk_main_iteration_do(false);
-
-		if (!running)
-			break;
-
 		if (state == PLAY) {
-			update_input();
-			gbmu_run_one_frame();
-			refresh_screen();
+			gbmu_fill_audio_buffer(audio_buf, AUDIO_BUF_SIZE, &frame_is_ready);
+			set_time_called_pulseaudio_write( currentTimeMillis() );
+			if (pa_simple_write(s, audio_buf, AUDIO_BUF_SIZE, &error) < 0) {
+				fprintf(stderr, __FILE__": pa_simple_write() failed: %s\n", pa_strerror(error));
+				exit(EXIT_FAILURE);
+			}
+			set_time_called_pulseaudio_write( 0 );
 		}
-
-		double speed;
-		if (gtk_toggle_button_get_active((GtkToggleButton*)radio1))
-			speed = 0.5;
-		else if (gtk_toggle_button_get_active((GtkToggleButton*)radio2))
-			speed = 1.0;
-		else if (gtk_toggle_button_get_active((GtkToggleButton*)radio3))
-			speed = 2.0;
-		else if (gtk_toggle_button_get_active((GtkToggleButton*)radio4))
-			speed = INFINITY;
-
-		int frame_duration = 1000000.0 / (60.0 * speed);
-		// printf("frame duration: %d\n", frame_duration);
-
-		gettimeofday(&after_tv, NULL);
-		int64_t before_msec = ((int64_t)before_tv.tv_sec)*1000000 + before_tv.tv_usec;
-		int64_t after_msec = ((int64_t)after_tv.tv_sec)*1000000 + after_tv.tv_usec;
-		int64_t elapsed_time = after_msec - before_msec;
-		if (elapsed_time < frame_duration)
-			usleep(frame_duration - elapsed_time);
+		else {
+			pa_simple_flush(s, NULL);
+			frame_is_ready();
+			usleep(16000);
+		}
 	}
 
 	free(keyboard_state);
+	free(audio_buf);
+	pa_simple_free(s);
 	gbmu_quit();
 }
+
+#endif
