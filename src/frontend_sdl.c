@@ -47,9 +47,9 @@ void start_audio() {
 	want.callback = myAudioCallback;
 
 	if (SDL_OpenAudio(&want, &have) < 0)
-	    SDL_Log("Failed to open audio: %s", SDL_GetError());
-    if (have.format != want.format)
-        SDL_Log("We didn't get Float32 audio format.");
+		SDL_Log("Failed to open audio: %s", SDL_GetError());
+	if (have.format != want.format)
+		SDL_Log("We didn't get Float32 audio format.");
 	// printf("want.samples: %u\n", want.samples);
 	// printf("have.samples: %u\n", have.samples);
 	// printf("want.freq: %d\n", want.freq);
